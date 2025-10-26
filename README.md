@@ -43,8 +43,11 @@ A production-ready FastAPI template for building AI agent applications with Lang
 ### Prerequisites
 
 - Python 3.13+
-- PostgreSQL ([see Database setup](#database-setup))
-- Docker and Docker Compose (optional)
+- PostgreSQL database (local install or cloud service like Supabase)
+- Git
+- (Optional) Docker and Docker Compose for containerized setup
+
+Note: While the project includes Makefiles and shell scripts, you can run everything directly with Python commands on any OS.
 
 ### Environment Setup
 
@@ -55,56 +58,89 @@ git clone <repository-url>
 cd <project-directory>
 ```
 
-2. Create and activate a virtual environment:
+2. Create and activate a Python virtual environment:
 
-```bash
+```powershell
+# Create virtual environment
+python -m venv .venv
+
+# Activate on Windows (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# Activate on Linux/macOS
+source .venv/bin/activate
+```
+
+3. Install dependencies:
+```powershell
+# Install uv package installer (faster than pip)
+pip install uv
+
+# Install project dependencies
 uv sync
+
+# Alternatively, you can use pip directly:
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-3. Copy the example environment file:
+4. Set up environment variables:
+```powershell
+# Copy example environment file
+# On Windows (PowerShell)
+Copy-Item .env.example .env.development
 
-```bash
-cp .env.example .env.[development|staging|production] # e.g. .env.development
+# On Linux/macOS
+cp .env.example .env.development
+
+# Edit the file with your settings
+# Make sure to update the database and API keys
 ```
 
-4. Update the `.env` file with your configuration (see `.env.example` for reference)
+### Database Setup
 
-### Database setup
+1. Create a PostgreSQL database:
+   - Option 1: Use a local PostgreSQL installation
+   - Option 2: Use a cloud service like Supabase
+   - Option 3: Use Docker (see Docker section below)
 
-1. Create a PostgreSQL database (e.g Supabase or local PostgreSQL)
-2. Update the database connection settings in your `.env` file:
+2. Update the database settings in your `.env.development`:
 
 ```bash
-POSTGRES_HOST=db
+POSTGRES_HOST=localhost     # Use 'db' if running with Docker
 POSTGRES_PORT=5432
-POSTGRES_DB=cool_db
+POSTGRES_DB=mydb
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
+POSTGRES_PASSWORD=your_password
 ```
 
-- You don't have to create the tables manually, the ORM will handle that for you.But if you faced any issues,please run the `schemas.sql` file to create the tables manually.
+Note: Tables are created automatically by SQLModel on first run. If you encounter issues, you can manually run the `schema.sql` file:
+```powershell
+psql -h localhost -U your_username -d your_database -f schema.sql
+```
 
 ### Running the Application
 
 #### Local Development
 
-1. Install dependencies:
-
-```bash
-uv sync
+1. Set the environment (PowerShell):
+```powershell
+$env:APP_ENV = "development"
 ```
 
-2. Run the application:
+2. Start the FastAPI server:
+```powershell
+# With auto-reload (development)
+uvicorn app.main:app --reload --port 8000
 
-```bash
-make [dev|staging|production] # e.g. make dev
+# Without auto-reload (production)
+uvicorn app.main:app --port 8000
 ```
 
-1. Go to Swagger UI:
-
-```bash
-http://localhost:8000/docs
-```
+3. Access the application:
+- API Documentation: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
+- API Base URL: http://localhost:8000/api/v1
 
 #### Using Docker
 

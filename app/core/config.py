@@ -246,3 +246,4 @@ class Settings:
 
 # Create settings instance
 settings = Settings()
+settings.LLM_MODEL = "gemini-flash-latest"

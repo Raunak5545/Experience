@@ -71,7 +71,7 @@ class LangGraphAgent:
         api_key = getattr(settings, 'GEMINI_API_KEY', None) or settings.LLM_API_KEY
         
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,  # e.g., "gemini-1.5-pro" or "gemini-1.5-flash"
+            model="gemini-1.5-pro",  # e.g., "gemini-1.5-pro" or "gemini-1.5-flash"
             temperature=settings.DEFAULT_LLM_TEMPERATURE,
             google_api_key=api_key,
             max_output_tokens=settings.MAX_TOKENS,  # Gemini uses max_output_tokens instead of max_tokens

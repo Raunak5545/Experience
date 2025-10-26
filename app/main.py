@@ -22,6 +22,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.api import api_router
+from app.api.v1.experience import router as experience_router
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import logger
@@ -51,7 +52,6 @@ async def lifespan(app: FastAPI):
     )
     yield
     logger.info("application_shutdown")
-
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -115,7 +115,7 @@ app.add_middleware(
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
+app.include_router(experience_router)
 
 @app.get("/")
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["root"][0])

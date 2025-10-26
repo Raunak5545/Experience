@@ -1,11 +1,11 @@
+# Base image
 FROM python:3.13.2-slim
 
 # Set working directory
 WORKDIR /app
 
-# Set non-sensitive environment variables
+# Build argument and environment
 ARG APP_ENV=production
-
 ENV APP_ENV=${APP_ENV} \
     PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
@@ -26,10 +26,10 @@ RUN apt-get update && apt-get install -y \
 COPY pyproject.toml .
 RUN uv venv && . .venv/bin/activate && uv pip install -e .
 
-# Copy the application
+# Copy the application code
 COPY . .
 
-# Make entrypoint script executable - do this before changing user
+# Make entrypoint script executable
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Create a non-root user
@@ -42,9 +42,16 @@ RUN mkdir -p /app/logs
 # Default port
 EXPOSE 8000
 
-# Log the environment we're using
+# Log environment
 RUN echo "Using ${APP_ENV} environment"
 
-# Command to run the application
+# Entrypoint
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+
+# CMD depending on environment
+CMD ["/bin/sh", "-c", "\
+    if [ \"$APP_ENV\" = 'development' ]; then \
+        /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload; \
+    else \
+        /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000; \
+    fi"]

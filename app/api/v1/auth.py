@@ -228,7 +228,7 @@ async def login(
 
 
 @router.post("/session", response_model=SessionResponse)
-async def create_session(user: User = Depends(get_current_user)):
+async def create_session(name:str,user: User = Depends(get_current_user)):
     """Create a new chat session for the authenticated user.
 
     Args:
@@ -242,7 +242,7 @@ async def create_session(user: User = Depends(get_current_user)):
         session_id = str(uuid.uuid4())
 
         # Create session in database
-        session = await db_service.create_session(session_id, user.id)
+        session = await db_service.create_session(session_id, user.id,name=name)
 
         # Create access token for the session
         token = create_access_token(session_id)

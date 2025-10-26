@@ -9,6 +9,7 @@ echo "Initial Database Port: $( [[ -n ${POSTGRES_PORT:-${DB_PORT:-}} ]] && echo 
 echo "Initial Database Name: $( [[ -n ${POSTGRES_DB:-${DB_NAME:-}} ]] && echo 'set' || echo 'Not set' )"
 echo "Initial Database User: $( [[ -n ${POSTGRES_USER:-${DB_USER:-}} ]] && echo 'set' || echo 'Not set' )"
 
+echo ${APP_ENV}
 # Load environment variables from the appropriate .env file
 if [ -f ".env.${APP_ENV}" ]; then
     echo "Loading environment from .env.${APP_ENV}"

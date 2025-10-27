@@ -4,9 +4,11 @@ from typing import Any, Dict
 
 from fastapi import File, HTTPException
 from langgraph.graph import END, StateGraph
+from app.core.langgraph.agents.basic_info import BasicInfoAgent
 from app.core.langgraph.agents.classification import ClassificationAgent
 from app.core.langgraph.agents.extraction import ExtractionAgent
 from app.core.langgraph.agents.globalstate import TravelAgentState
+from app.core.langgraph.agents.plan_agent import PlanAgent
 from app.core.langgraph.agents.validation import ValidationAgent
 
 
@@ -17,7 +19,8 @@ def create_travel_workflow():
     extraction_agent = ExtractionAgent()
     validation_agent = ValidationAgent()
     classification_agent = ClassificationAgent()
-    
+    basic_info_agent = BasicInfoAgent()
+    plan_agent = PlanAgent() 
     # Create node functions
     def extraction_node(state: TravelAgentState) -> Dict[str, Any]:
         return extraction_agent.execute(state)
@@ -27,13 +30,29 @@ def create_travel_workflow():
     
     def classification_node(state: TravelAgentState) -> Dict[str, Any]:
         return classification_agent.execute(state)
-       
+    def basic_info_node (state:TravelAgentState) -> Dict[str,Any]:
+        return basic_info_agent.execute(state)
+    def plan_agent_node(state:TravelAgentState) -> Dict[str,Any]:
+        return plan_agent.execute(state)
+    def combine_node(state: TravelAgentState) -> Dict[str, Any]:
+        basic_info = state.get("basic_info", {})
+        travel_plan = state.get("travel_plan", {})
+        experience = {
+            **basic_info.model_dump(),
+            "plan_type" : state.get("classification_type"), 
+            "travel_plan": travel_plan,
+        }
+
+        return {"experience": experience}
     # Build workflow graph
     workflow = StateGraph(TravelAgentState)
     # Add nodes
     workflow.add_node("extraction", extraction_node)
     workflow.add_node("validation", validation_node)
     workflow.add_node("classification", classification_node)
+    workflow.add_node("basic_info", basic_info_node)
+    workflow.add_node("plan",plan_agent_node )
+    workflow.add_node("combine_node",combine_node)
     
     # Set entry point
     workflow.set_entry_point("extraction")
@@ -47,7 +66,11 @@ def create_travel_workflow():
             "end": END
         }
 )
-    workflow.add_edge("classification", END)
+    workflow.add_edge("classification","basic_info")
+    workflow.add_edge("classification","plan")
+    workflow.add_edge("basic_info","combine_node")
+    workflow.add_edge("plan","combine_node")
+    workflow.add_edge("combine_node",END)
     
     return workflow.compile()
 

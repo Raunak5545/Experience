@@ -20,23 +20,22 @@ class ValidationAgent:
     
     def check_completeness(self, extracted_text: str) -> Dict[str, Any]:
         prompt = f"""Analyze the following travel information and determine if it contains:
-1. Destination or City (specific location)
-2. Travel Dates (at least one date reference)
-3. Number of Travelers (explicit or implied)
+        1. Destination or City (specific location)
+        2. Activities or Attractions
 
-**Return validated if we have everything that we need**
-Extracted Information:
+        Prompt user and ask for missing information if any of the above are absent.
 
-{extracted_text}
+        **Return validated if we have everything that we need**
+        Extracted Information:
 
-Respond in JSON format:
-{{
-    "has_destination": true/false,
-    "is_validated" : true/false,
-    "validation_prompt": "Extra instructions for the previous agent to try to fetch these missing information",
-    "failed_reason" : "The reason due to which we the validation_failed"
-    "confidence": "0-1"
-}}"""
+        {extracted_text}
+
+        Respond in JSON format:
+        {{
+        "validated": false,
+        "prompt": ""
+        }}
+        """
         response = self.llm.invoke([HumanMessage(content=prompt)])
         
         try:

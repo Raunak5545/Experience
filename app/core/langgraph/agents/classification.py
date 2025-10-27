@@ -32,29 +32,28 @@ class ClassificationAgent:
     
     def classify(self, extracted_text: str) -> Dict[str, Any]:
         """Classify itinerary based on completeness"""
-        prompt = f"""Analyze the following travel information and classify it as either:
-- MANAGED: Contains detailed booking information including cancellation policy, contact info, inclusions/exclusions, services, payment terms, and pricing
-- UNMANAGED: Missing several major components listed above
+        prompt = f"""Analyze the following travel information and classify it as either: 
+        - MANAGED: Contains at least one of the following elements: cancellation policy, contact info, inclusions/exclusions, services, payment terms, or pricing.
+        - UNMANAGED: None of the above elements are present.
 
-Look for these specific elements:
-1. Cancellation Policy
-2. Contact Information
-3. Inclusions and Exclusions
-4. Services Offered
-5. Payment Terms
-6. Pricing Information
+        Look for these specific elements:
+        1. Cancellation Policy
+        2. Contact Information
+        3. Inclusions and Exclusions
+        4. Services Offered
+        5. Payment Terms
+        6. Pricing Information
 
-Extracted Information:
-{extracted_text}
+        Extracted Information:
+        {extracted_text}
 
-Respond in JSON format:
-{{
-    "classification_type": "managed" or "unmanaged",
-    "found_criteria": ["criterion1", "criterion2"],
-    "missing_criteria": ["criterion3", "criterion4"],
-    "confidence": "high/medium/low",
-    "reason": "Brief explanation"
-}}"""
+
+        Respond strictly in JSON format with these fields:
+        {
+        "type": "MANAGED" or "UNMANAGED",
+        "Explanation": "Explain which elements were found or missing",
+        "classification_confidence": 0.88
+        }"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
         

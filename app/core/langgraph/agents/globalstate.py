@@ -14,7 +14,7 @@ class TravelAgentState(TypedDict):
     validation_attempts: int
     validation_prompt: str
     
-    classification: str  # 'managed' or 'unmanaged'
+    classification_type: str  # 'managed' or 'unmanaged'
     classification_reason: str
     
     final_itinerary: dict[str, Any]

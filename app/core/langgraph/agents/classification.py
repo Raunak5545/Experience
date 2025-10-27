@@ -1,5 +1,9 @@
 import json
-from typing import Any, Dict
+from typing import (
+    Any,
+    Dict,
+)
+
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -45,7 +49,7 @@ Extracted Information:
 
 Respond in JSON format:
 {{
-    "classification": "managed" or "unmanaged",
+    "classification_type": "managed" or "unmanaged",
     "found_criteria": ["criterion1", "criterion2"],
     "missing_criteria": ["criterion3", "criterion4"],
     "confidence": "high/medium/low",
@@ -59,7 +63,7 @@ Respond in JSON format:
             return result
         except:
             return {
-                "classification": "unmanaged",
+                "classification_type": "unmanaged",
                 "found_criteria": [],
                 "missing_criteria": self.MANAGED_CRITERIA,
                 "confidence": "low",
@@ -79,8 +83,9 @@ Respond in JSON format:
         reason = classification_result.get("reason", "")
         print(classification_result) 
         return {
-            "classification": classification_type,
+            "classification_type": classification_type,
             "classification_reason": reason,
         }
+
 
 

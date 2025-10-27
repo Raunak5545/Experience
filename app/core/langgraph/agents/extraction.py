@@ -4,6 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from google import genai
 
+
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 
@@ -51,7 +52,8 @@ Return all relevant information in a clear, structured narrative format.
         print(extra_prompt)
         task_prompt = extra_prompt  or  "Extract key travel information (dates, destinations, travelers, etc.) from this file."
         full_prompt = f"{self.prompt}\n\n{task_prompt}"
-
+        print(full_prompt)
+        
         uploaded_file = self.multimodal_client.files.upload(file=file_path)
         response = self.multimodal_client.models.generate_content(
             model=settings.LLM_MODEL,

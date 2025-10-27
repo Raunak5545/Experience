@@ -64,7 +64,6 @@ Return all relevant information in a clear, structured narrative format.
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         
         raw_input: Optional[str] = state.get("raw_input")
-        print(state)
         file_path: Optional[str] = state.get("input_file_path")
 
         if file_path:

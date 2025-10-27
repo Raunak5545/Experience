@@ -3,6 +3,8 @@ from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import BaseMessage
 
+from app.core.langgraph.schema.experience import BasicInfo, Experience, TravelPlan
+
 class TravelAgentState(TypedDict):
     input_text: str
     input_file_path: list[dict[str, Any]]  # [{type: 'pdf/image/audio/video', path: '...', content: '...'}]
@@ -24,4 +26,6 @@ class TravelAgentState(TypedDict):
 
     failed_reason: str
 
-
+    basic_info :BasicInfo
+    travel_plan :TravelPlan
+    experience : Experience

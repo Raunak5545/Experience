@@ -9,7 +9,7 @@ from app.core.langgraph.agents.globalstate import TravelAgentState
 class ValidationAgent:
     
     REQUIRED_FIELDS = ["destination"]
-    MAX_ATTEMPTS = 1
+    MAX_ATTEMPTS = 0
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(

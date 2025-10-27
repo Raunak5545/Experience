@@ -7,7 +7,7 @@ from app.core.langgraph.agents.workflow import start_agentic_process
 
 router = APIRouter()
 
-@router.post("/experience")
+@router.post("")
 async def create_experience(file: UploadFile = File(...)):
     temp_file_path = f"/tmp/{file.filename}"  # Temporary path
     

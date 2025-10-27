@@ -8,7 +8,6 @@ from google import genai
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 
-
 class ExtractionAgent:
     """Agent that extracts travel information from text or multimodal input."""
 
@@ -20,25 +19,45 @@ class ExtractionAgent:
         )
 
         self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY)
-        self.prompt = f"""You are a travel data extraction specialist. Extract ALL travel-related information from the following text.
+        self.prompt = f"""
+        ## 🧭 Travel Information Extraction Prompt
+        You are an **advanced extraction specialist**.  
+        Your task is to **analyze and extract all travel-related information** from the provided input files — which may include **images, videos, PDFs, audio, or raw text**.
 
-Focus on identifying:
-- Destinations/Cities
-- Travel dates (check-in, check-out, departure, arrival)
-- Number of travelers (adults, children, infants)
-- Activities and experiences
-- Accommodations and hotels
-- Transportation details
-- Budget and pricing
-- Special requests or preferences
-- Contact information
-- Cancellation policies
-- Inclusions and exclusions
-- Services offered
-- Payment terms
+        ### 🧩 Input Types
+        - **Image:** Describe in detail everything visible — locations, landmarks, dates, signs, activities, and contextual text.
+        - **Video:** Combine **visual scene descriptions**, **spoken audio transcripts**, and **text appearing in frames** to extract full travel-related context.
+        - **PDF / Documents:** Extract both **text content** and **embedded visual/structural clues** (tables, receipts, itineraries, maps, etc.).
+        - **Raw Text:** Parse and interpret natural language information, even if unstructured.
 
-Return all relevant information in a clear, structured narrative format.
-"""
+        ---
+
+        ### 🕵️‍♂️ Your Objective
+        Provide a **comprehensive, structured narrative summary** covering *all relevant travel information* present in the files.
+
+        Focus especially on:
+        1. **Destinations / Cities** — Mention every identifiable place or location.
+        2. **Activities and Experiences** — Include sightseeing, adventure, relaxation, events, etc.
+        3. **Budget and Pricing** — Include any cost-related details like package price, hotel cost, activity pricing, or transportation fares.
+
+        If available, also include any **additional contextual travel details** (dates, accommodation, travelers, preferences, etc.) found within the data.
+
+        ---
+
+        ### 🧠 Output Format
+        Return your findings as a **clear, detailed narrative**, not in a list or category table.
+
+        ---
+
+        ### ⚙️ Instructions
+        - Combine and cross-verify information across all input files.  
+        - Include **every relevant piece of travel-related data** — even if implied or mentioned briefly.  
+        - If any file lacks explicit details, infer them logically based on surrounding context.  
+        - Maintain accuracy, fluency, and completeness.
+        ---
+
+        **Return only the final structured narrative — no headings, bullet points, or notes.**
+        """
 
 
     def extract_from_text(self, text: str) -> str:

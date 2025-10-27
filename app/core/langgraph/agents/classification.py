@@ -49,11 +49,11 @@ class ClassificationAgent:
 
 
         Respond strictly in JSON format with these fields:
-        {
+        {{
         "type": "MANAGED" or "UNMANAGED",
         "Explanation": "Explain which elements were found or missing",
         "classification_confidence": 0.88
-        }"""
+        }}"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
         
@@ -78,8 +78,8 @@ class ClassificationAgent:
         # Classify the itinerary
         classification_result = self.classify(extracted_text)
         
-        classification_type = classification_result.get("classification", "unmanaged")
-        reason = classification_result.get("reason", "")
+        classification_type = classification_result.get("type", "unmanaged")
+        reason = classification_result.get("Explanation", "")
         print(classification_result) 
         return {
             "classification_type": classification_type,

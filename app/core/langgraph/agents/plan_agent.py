@@ -61,10 +61,10 @@ class PlanAgent:
                   }},
                   "caption": "Short catchy summary for this activity"
                 }}
-                // Add more schedule items as needed
+                 Add more schedule items as needed
               ]
             }}
-            // Add more days as needed
+            Add more days as needed
           ]
         }}
 

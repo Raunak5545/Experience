@@ -82,7 +82,7 @@ def create_travel_workflow():
     workflow.add_node("extraction", extraction_node)
     # Note: validation node not added to graph per requirements
     workflow.add_node("classification", classification_node)
-    workflow.add_node("basic_info", basic_info_node)
+    workflow.add_node("basic_info_node", basic_info_node)
     workflow.add_node("plan", plan_agent_node)
     workflow.add_node("combine_node", combine_node)
     workflow.add_node("eval_node", eval_node)
@@ -95,11 +95,11 @@ def create_travel_workflow():
     workflow.add_edge("extraction", "classification")
     
     # 2. Classification → Basic Info & Plan (parallel execution)
-    workflow.add_edge("classification", "basic_info")
+    workflow.add_edge("classification", "basic_info_node")
     workflow.add_edge("classification", "plan")
     
     # 3. Both Basic Info and Plan → Combine Node
-    workflow.add_edge("basic_info", "combine_node")
+    workflow.add_edge("basic_info_node", "combine_node")
     workflow.add_edge("plan", "combine_node")
     
     #4 Combine Node → Eval Node

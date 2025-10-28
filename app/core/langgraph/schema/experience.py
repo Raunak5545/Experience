@@ -62,11 +62,8 @@ class TravelPlan(BaseModel):
     plan: List[PlanItem] = Field(..., description="List of day-by-day travel plans")
 
 
-class Experience(BasicInfo):
-    plan_type:str =  Field(...,description="Type of plan, MANAGED/UNMANAGED")
-    tags_info :  ExperienceTagsOutputScehma = Field(...,description="Tags,category,types and subtypes")
-    travel_plan: TravelPlan
-    
+class Experience(BasicInfo,ExperienceTagsOutputScehma,TravelPlan):
+    plan_type:str =  Field(...,description="Type of plan, MANAGED/UNMANAGED") 
     
 class Eval(BaseModel):
     hallucination: float = Field(..., description="Evaluation of hallucination in the output (0.0 to 1.0)")

@@ -64,9 +64,9 @@ def create_travel_workflow():
         # Use .model_dump() if model exists, else {}
         experience = {
             **(basic_info.model_dump() if basic_info else {}),
+            **(travel_plan.model_dump() if travel_plan else {}),
+            **( tags_info.model_dump() if tags_info else {}),
             "plan_type": classification_type,
-            "travel_plan": travel_plan.model_dump() if travel_plan else None,
-            "tags_info": tags_info.model_dump() if tags_info else None,
         }
         return {"experience": experience}
 

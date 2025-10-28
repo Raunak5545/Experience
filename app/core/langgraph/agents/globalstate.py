@@ -1,6 +1,7 @@
 import operator
 from typing import Annotated, Any, TypedDict
 
+from google.ai.generativelanguage_v1beta.types.file import File
 from langchain_core.messages import BaseMessage
 from regex import E
 
@@ -10,6 +11,7 @@ class TravelAgentState(TypedDict):
     input_text: str
     input_file_path: list[dict[str, Any]]  # [{type: 'pdf/image/audio/video', path: '...', content: '...'}]
     
+    input_file :  File
     extracted_text: str
     extraction_complete: bool
     

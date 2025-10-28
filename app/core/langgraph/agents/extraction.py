@@ -92,7 +92,7 @@ class ExtractionAgent:
             model=settings.EXTRACTION_MODEL,
             contents=[uploaded_file, full_prompt]
         )
-        return response.text
+        return  (response.text,uploaded_file)
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         
@@ -100,7 +100,7 @@ class ExtractionAgent:
         file_path: Optional[str] = state.get("input_file_path")
 
         if file_path:
-            extracted_text = self.extract_from_file(file_path,state.get("validation_prompt"))
+            extracted_text ,uploaded_file= self.extract_from_file(file_path,state.get("validation_prompt"))
         elif raw_input:
             extracted_text = self.extract_from_text(raw_input)
         else:
@@ -108,4 +108,5 @@ class ExtractionAgent:
         return {
             "extracted_text": extracted_text,
             "extraction_complete": True,
+            'input_file': uploaded_file
         }

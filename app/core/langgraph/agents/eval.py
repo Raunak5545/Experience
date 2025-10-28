@@ -2,6 +2,7 @@ import json
 import os
 import time
 from typing import Any, Dict, Optional
+from app.core.logging import logger
 
 from fastapi import HTTPException
 from google import genai
@@ -92,13 +93,17 @@ class EvalAgent:
             return self._error_fallback(str(e))
 
 
-    def evaluate_from_file(self, experience: Dict[str, Any], file_path: str) -> Dict[str, Any]:
+    def evaluate_from_file(self, state,experience: Dict[str, Any], file_path: str) -> Dict[str, Any]:
         """Uploads and evaluates all input files along with the extracted experience."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
         # Upload file to Google GenAI
-        uploaded_file = self.multimodal_client.files.upload(file=file_path)
+        uploaded_file = state.get("input_file")
+        if not uploaded_file:
+            logger.info("Couldnot find uploaded_file uploading a new file")
+            print("Couldnot find uploaded_file uploading a new file")
+            uploaded_file = self.multimodal_client.files.upload(file=file_path)
 
         # Wait until ACTIVE or timeout
         start_time = time.time()
@@ -145,7 +150,7 @@ class EvalAgent:
 
         try:
             if file_path:
-                evaluation = self.evaluate_from_file(experience, file_path)
+                evaluation = self.evaluate_from_file(state,experience, file_path)
             elif raw_input:
                 evaluation = self.evaluate_from_text(experience, raw_input)
             else:

@@ -13,7 +13,7 @@ class ExtractionAgent:
 
     def __init__(self):
         self.text_llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.EVALUATION_LLM,
             temperature=0.3,
             google_api_key=settings.LLM_API_KEY,
         )
@@ -68,14 +68,12 @@ class ExtractionAgent:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        print(extra_prompt)
         task_prompt = extra_prompt  or  "Extract key travel information (dates, destinations, travelers, etc.) from this file."
         full_prompt = f"{self.prompt}\n\n{task_prompt}"
-        print(full_prompt)
         
         uploaded_file = self.multimodal_client.files.upload(file=file_path)
         response = self.multimodal_client.models.generate_content(
-            model=settings.LLM_MODEL,
+            model=settings.EXTRACTION_MODEL,
             contents=[uploaded_file, full_prompt]
         )
         return response.text
@@ -91,8 +89,6 @@ class ExtractionAgent:
             extracted_text = self.extract_from_text(raw_input)
         else:
             extracted_text = "No input provided."
-
-        print(extracted_text)
         return {
             "extracted_text": extracted_text,
             "extraction_complete": True,

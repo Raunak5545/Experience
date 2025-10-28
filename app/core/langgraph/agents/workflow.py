@@ -34,18 +34,26 @@ def create_travel_workflow():
         return basic_info_agent.execute(state)
     def plan_agent_node(state:TravelAgentState) -> Dict[str,Any]:
         return plan_agent.execute(state)
-    def combine_node(state: TravelAgentState) -> Dict[str, Any]:
-        basic_info = state.get("basic_info", {})
-        travel_plan = state.get("travel_plan", {})
+    def combine_node(state: "TravelAgentState") -> Dict[str, Any]:
+        # Safely extract Pydantic models or default to None
+        basic_info = state.get("basic_info")
+        tags_info = state.get("tags_info")
+        travel_plan = state.get("travel_plan")
+        classification_type = state.get("classification_type")
+
+        # Use .model_dump() if model exists, else {}
         experience = {
-            **basic_info.model_dump(),
-            "plan_type" : state.get("classification_type"), 
-            "travel_plan": travel_plan,
+            **(basic_info.model_dump() if basic_info else {}),
+            "plan_type": classification_type,
+            "travel_plan": travel_plan.model_dump() if travel_plan else None,
+            "tags_info": tags_info.model_dump() if tags_info else None,
         }
 
         return {"experience": experience}
+
     # Build workflow graph
     workflow = StateGraph(TravelAgentState)
+
     # Add nodes
     workflow.add_node("extraction", extraction_node)
     workflow.add_node("validation", validation_node)
@@ -63,7 +71,6 @@ def create_travel_workflow():
         {
             "extraction": "extraction",
             "classification": "classification",
-            "end": END
         }
 )
     workflow.add_edge("classification","basic_info")
@@ -101,9 +108,7 @@ def start_agentic_process(file_path:str ):
     try:
         result = app.invoke(initial_state)
         
-        # Display final itinerary
-        print(json.dumps(result.get("final_itinerary", {}), indent=2))
-        
+        # Display final itinerary 
         print("\n" + "=" * 80)
         print("=" * 80)
         print(f"Classification: {result.get('classification', 'N/A').upper()}")

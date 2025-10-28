@@ -1,0 +1,673 @@
+```
+
+content:
+  caption:
+    managed:
+      model: gemini-2.5-pro
+      prompt: |
+        Write only a concise, informative caption for a structured (managed) travel experience.
+          Guidelines:
+          - Output must be a single caption or title only — no explanations, descriptions, or extra text.
+          - Keep it under 10 words (maximum 50 characters).
+          - Clearly specify the destination and experience type.
+          - Mention if it’s guided, single-day, or multi-day.
+          - Use clear, factual language — avoid vague, poetic, or emotional wording.
+          - Emphasize that the experience is structured and managed.
+          - Minimum: 3 words.
+
+    unmanaged:
+      model: gemini-2.5-pro
+      prompt: |
+        Write only a short, evocative caption for a self-led (unmanaged) travel experience.
+
+        Guidelines:
+        - Output must be a single caption or title only — no explanations or extra text.
+        - Use expressive, story-like phrasing that conveys mood, setting, or purpose.
+        - Avoid clichés or generic words like “explore,” “amazing,” or “journey.”
+        - Subtly suggest uniqueness, tone, or destination — do not sound like a tour name.
+        - Keep it under 10 words (maximum 50 characters).
+        - Minimum: 3 words.
+
+
+  overview:
+    managed:
+      model: gemini-2.5-pro
+      prompt: |
+        Write a professional overview for a structured (Managed) experience.
+
+        Guidelines:
+        - Provide a professional summary of the experience: what, where, and how long.
+        - Mention guided nature of the tour (e.g., “led by a certified guide”).
+        - Highlight structure: key inclusions, route style, pace.
+        - Use neutral, informative tone — not immersive or emotional.
+        - Ensure it’s clear this is a scheduled, provider-run activity.
+        - Don't add any extra information, be perfect.
+        - Maximum: 60 words.
+        - Minimum: 35 words.
+
+    unmanaged:
+      model: gemini-2.5-pro
+      prompt: |
+        Write an immersive, mood-setting overview for a self-led (Unmanaged) experience.
+        Guidelines:
+        - Write in the creator’s voice.
+        - Create visual imagery, build intrigue, and spark wanderlust.
+        - Avoid repeating the title or sounding like a factual intro.
+        - Connect tone, vibe, and emotional hooks.
+        - Don't add any extra information, be perfect.
+        - Maximum: 60 words.
+        - Minimum: 35 words.
+
+  plan:
+    managed:
+      model: gemini-2.5-pro
+      prompt: |
+        Write only a structured, day-wise itinerary for a guided (Managed) experience in the following JSON format:
+        "plan": [
+          {
+            "caption": "The caption should be very unique and strictly about that type (ACTIVITY/STAY/EVENT)",
+            "day": "1",
+            "description": [
+              "Short summary sentences about the day, each ending with <br>"
+            ],
+            "schedule": [
+              {
+                "time": "HH:MM AM/PM",
+                "timeline": "Morning/Afternoon/Evening",
+                "caption": "",
+                "description": [
+                  "Step-by-step activity description sentences, each ending with <br>"
+                ],
+                "type": {
+                  "name": "ACTIVITY/STAY/EVENT",
+                  "value": {
+                    "name": "Activity name"
+                  },
+                  "location": {
+                    "street": "Street name",
+                    "city": "City name",
+                    "state": "State name",
+                    "postalCode": "Zip code or Postal code",
+                    "country": "Country name",
+                    "coordinates": {
+                      "type": "Point",
+                      "coordinates": [longitude, latitude]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+
+        Guidelines:
+          - Only restructure and format **existing information**; do not invent or fabricate any data.
+          - Use exactly the timings, timelines, captions, activities, and locations as provided. If a field is missing, leave it empty; do not create new values.
+          - Maintain strict JSON structure and semantic order. Output must be fully valid and parsable JSON.
+          - Organize itinerary day-wise; default to 1 day if unspecified.
+          - Include optional sections (Getting There, Where to Stay, Dining, Hiking Info) **only if explicitly present**.
+          - Include Morning/Afternoon/Evening subheaders **only if explicitly present in the source data; do not infer or add extra**.
+          - Keep each schedule block factual and under 60 words.
+          - Maximum words per day ~150, minimum 40 words per day.
+          - Ensure type.name is strictly "ACTIVITY", "STAY", or "EVENT".
+          - generate only the coordinates from the location and place, if they are present the source data.
+          - Do not add extra information or make assumptions; strictly follow the schema.
+
+    unmanaged:
+      model: gemini-2.5-pro
+      prompt: |
+        Write a flexible, immersive itinerary for a self-led (Unmanaged) experience.
+        Guidelines:
+        - Identify key activities, recommendations, and named locations.
+        - Use immersive, story-first voice with sensory details (e.g., sounds, scents, terrain).
+        - Structure using flexible, modular blocks (no timestamps unless needed).
+        - Begin each day with: Getting There, Where to Stay, or Dining (only if relevant).
+        - Avoid verbosity, checklists, or command-style phrasing.
+        - Embed subtle bookability cues (e.g., "vendors rent bikes here").
+        - Avoid hallucinated data or made-up names.
+        - Extract all named places from source content (temples, festivals, towns).
+        - Avoid vague terms like "local village" when specifics are available.
+        - Maximum: 200 words.
+        - Minimum: 75 words.
+
+
+  tags:
+    managed:
+      model: gemini-2.5-pro
+      prompt: |
+        You are an AI assistant specialized in categorizing tourism experiences. You have access to a comprehensive taxonomy of experience categories, types, and subtypes that classifies various tourism and hospitality offerings.
+        TAXONOMY = {
+            "Activity": {
+              "Adventure Sports": [
+                "Base Jumping",
+                "Bungee Jumping",
+                "Canyoning",
+                "Caving & Spelunking",
+                "Cliff Camping",
+                "Desert Rally Driving",
+                "Extreme Paragliding",
+                "Heli-Skiing",
+                "Ice Climbing",
+                "Ice Diving",
+                "Paragliding",
+                "Rock Climbing",
+                "Sandboarding",
+                "Sky Surfing",
+                "Skydiving",
+                "Whitewater Rafting",
+                "Ziplining"
+              ],
+              "Creative Workshops": [
+                "Art & Craft Workshops",
+                "Calligraphy Classes",
+                "Cooking Classes",
+                "Dance Workshops",
+                "Glassblowing Classes",
+                "Jewelry Making",
+                "Leather Crafting Classes",
+                "Music Jam Sessions",
+                "Perfume Making Workshops",
+                "Pottery Classes",
+                "Traditional Weaving"
+              ],
+              "Cultural Immersion": [
+                "Language & Culture Exchange",
+                "Local Cooking & Dining with Family",
+                "Music & Dance Lessons",
+                "Storytelling & Folk Tales",
+                "Traditional Tattoo Experiences"
+              ],
+              "Eco & Rural Activities": [
+                "Animal Sanctuary Volunteering",
+                "Bee Keeping & Honey Tasting",
+                "Desert Farming Experiences",
+                "Farm Visits",
+                "Organic Wine Making Experiences",
+                "Permaculture Workshops",
+                "Rural Architecture Tours",
+                "Sustainable Farming Tours",
+                "Village Immersion",
+                "Wild Herb Foraging Tours"
+              ],
+              "Health & Wellness": [
+                "Ayurvedic Healing",
+                "Chakra Balancing Classes",
+                "Fasting & Detox Retreats",
+                "Forest Bathing",
+                "Luxury Spa Days",
+                "Meditation Retreats",
+                "Sound Healing Sessions",
+                "Spas",
+                "Thermal Bath Rituals",
+                "Wellness and Detox Cruises",
+                "Yoga Sessions",
+                "Yoga on Water (SUP Yoga)"
+              ],
+              "Outdoor Activities": [
+                "Bird Watching Expeditions",
+                "Botanical Garden Tours",
+                "Cave Walks",
+                "Forest Zipline Adventures",
+                "Geothermal Hikes",
+                "Glacier Hikes",
+                "Hiking",
+                "Horseback Riding",
+                "Nature Reserve Walks",
+                "Nature Walks",
+                "Snowshoeing"
+              ],
+              "Water Sports": [
+                "Flyboarding",
+                "Jet Skiing",
+                "Kayaking",
+                "Kitesurfing",
+                "Paddleboarding Adventures",
+                "Sailing Trips",
+                "Scuba Diving",
+                "Sea Kayaking",
+                "Shark Cage Diving",
+                "Snorkeling",
+                "Submarine Diving",
+                "Surfing",
+                "Swimming with Manta Rays",
+                "Wreck Diving"
+              ]
+            },
+            "Events": {
+              "Festivals": [
+                "Carnivals",
+                "Film Festivals",
+                "Food & Wine Festivals",
+                "Grape Stomping Festivals",
+                "Harvest Festivals",
+                "Lantern Festivals",
+                "Music & Dance Festivals",
+                "Music Festivals",
+                "Snow & Ice Festivals",
+                "Winter Light Festivals"
+              ],
+              "Performing Arts": [
+                "Circus & Cabaret",
+                "Concerts",
+                "Flamenco Dance Shows",
+                "Global Film Premieres",
+                "Interactive Theater Experiences",
+                "International Book Fairs",
+                "Opera Shows",
+                "Street Music Festivals",
+                "Street Theater Performances",
+                "Theatre Shows"
+              ],
+              "Seasonal Events": [
+                "Cherry Blossom Festivals",
+                "Cherry Blossom Viewing",
+                "Christmas Markets",
+                "Easter Parades",
+                "Fire Festivals",
+                "Halloween Haunted Houses",
+                "New Year's Eve Fireworks",
+                "Spring Blossom Celebrations",
+                "Summer Beach Parties"
+              ],
+              "Sports Events": [
+                "Cricket Matches",
+                "Extreme Ice Climbing Championships",
+                "Extreme Sports Competitions",
+                "Formula 1",
+                "Ice Hockey Championships",
+                "International Golf Tournaments",
+                "Marathons",
+                "Olympic Games Viewing",
+                "Soccer Matches",
+                "Traditional Games Tournaments"
+              ]
+            },
+            "Stay": {
+              "Boutique Lodgings": [
+                "Art Hotels",
+                "Design Hotels",
+                "Floating Hotels",
+                "Historic Inns",
+                "Houseboats",
+                "Ice Hotels",
+                "Lighthouse Hotels",
+                "Luxury Caves",
+                "Treehouses"
+              ],
+              "Community-Based Stays": [
+                "Historic Family Homes",
+                "Homestays",
+                "Mountain Village Homes",
+                "Tribal Homestays"
+              ],
+              "Eco-Stays": [
+                "Forest Lodges",
+                "Glamping Tents",
+                "Mountain Eco-Lodges",
+                "Sustainable Beach Resorts",
+                "Tree Lodges"
+              ],
+              "Farm Stays": [
+                "Cheese & Dairy Farms",
+                "Dairy Farm Cottages",
+                "Olive Farms & Vineyards",
+                "Rural Farmhouses",
+                "Wine Estate Accommodations"
+              ]
+            },
+            "Food": {
+              "Dining Experiences": [
+                "Chef-Led Dining Experiences",
+                "Dinner with Locals",
+                "Farm Dinners",
+                "Historical Themed Dining",
+                "Nomadic Food Experiences",
+                "Nomadic Tribe Meals",
+                "Pop-Up Dining Events",
+                "Underground Supper Clubs"
+              ],
+              "Food Tastings": [
+                "Caviar Sampling",
+                "Chocolate Tours",
+                "Craft Beer Tastings",
+                "Ethnic Cuisine Tastings",
+                "Hot Sauce Tastings",
+                "Local Market Tours",
+                "Mead and Honey Tastings",
+                "Sake Tasting",
+                "Wine Tastings"
+              ],
+              "Food Workshops": [
+                "Bread Making Classes",
+                "Cooking Classes",
+                "Mixology & Cocktail Classes",
+                "Pasta Making Classes",
+                "Regional Baking Classes",
+                "Regional Spice Workshops",
+                "Sushi Making Classes"
+              ]
+            },
+            "Tours": {
+              "Adventure Tours": [
+                "Arctic Expedition Tours",
+                "Glacier Climbing Tours",
+                "Ice Cave Expeditions",
+                "Jungle Survival Expeditions",
+                "Polar Ice Expeditions",
+                "Volcano Hiking Tours"
+              ],
+              "Cruise Tours": [
+                "Dinner Cruises",
+                "Expedition Cruises",
+                "Glass Bottom Boat Cruises",
+                "Luxury Yacht Tours",
+                "Ocean Cruises",
+                "River Cruises"
+              ],
+              "Cultural Tours": [
+                "Architecture & Design Tours",
+                "Artisan Village Tours",
+                "Festival Tours",
+                "Historical Battlefields Tours",
+                "Indigenous Handicraft Tours",
+                "Local Art & Craft Tours",
+                "Local Folklore Tours",
+                "Religious Festival Tours",
+                "Royal Palace Tours",
+                "Tribal & Indigenous Tours"
+              ],
+              "Cycling Tours": [
+                "City Bike Tours",
+                "Coastal Scenic Rides",
+                "Countryside Cycling Tours",
+                "Desert Fatbike Tours",
+                "Food & Brewery Cycling Tours",
+                "Mountain Bike Expeditions",
+                "Wine Region Cycling Tours"
+              ],
+              "Food Tours": [
+                "Cheese Making Tours",
+                "Coffee Plantation Tours",
+                "Farm-to-Table Tours",
+                "Luxury Food Experiences",
+                "Street Food Night Tours",
+                "Street Food Tours",
+                "Wine & Cheese Tours",
+                "Wine Harvest Tours"
+              ],
+              "Multi-day Tours": [
+                "Adventure Expeditions",
+                "Adventure Tours",
+                "Cultural Heritage Tours",
+                "Eco & Wildlife Immersive",
+                "Luxury Train Journeys"
+              ],
+              "Nature & Wildlife Tours": [
+                "Bird Watching Tours",
+                "Gorilla Trekking",
+                "Jungle Safaris",
+                "Mangrove Explorations",
+                "Night Safari Experiences",
+                "Penguin Watching Tours",
+                "Safari & Conservation Tours",
+                "Safari Tours",
+                "Whale Watching"
+              ],
+              "Photography Tours": [
+                "Astrophotography Tours",
+                "City & Urban Photography",
+                "Cultural Event Photography",
+                "Landscape Photography Tours",
+                "Night Photography Tours",
+                "Street Life Photography",
+                "Wildlife Photo Expeditions"
+              ],
+              "Specialty Tours": [
+                "Archaeological Tours",
+                "Architecture River Cruises",
+                "Conservation-Focused Tours",
+                "Culinary Heritage Tours",
+                "Educational Study Tours",
+                "Film & Literature Tours",
+                "Film & TV Tours",
+                "Ghost Storytelling Walks",
+                "Graffiti & Street Art Tours",
+                "LGBTQ+ History Tours",
+                "Photography Expeditions",
+                "Religious Pilgrimage Journeys",
+                "Space Museum & Sci-Fi Tours",
+                "Women-only Tours"
+              ],
+              "Spiritual Tours": [
+                "Festival-centric Spiritual Tours",
+                "Monastery Stay Tours",
+                "Pilgrimage Tours"
+              ],
+              "Walking Tours": [
+                "Architecture Walking Tours",
+                "City Highlights Tours",
+                "Food & Market Walking Tours",
+                "Ghost & Haunted Tours",
+                "Historical Walking Tours",
+                "Street Art & Mural Tours",
+                "Underground Tours"
+              ]
+            },
+            "Attraction": {
+              "Historical Sites": [
+                "Ancient Ruins",
+                "Ancient Temples",
+                "Archaeological Sites",
+                "Castles",
+                "Medieval Castles",
+                "Religious Monuments",
+                "Royal Gardens",
+                "World War II Battlefields"
+              ],
+              "Landmarks": [
+                "Iconic Towers",
+                "Modern Architectural Landmarks",
+                "World Heritage Sites",
+                "World's Tallest Buildings"
+              ],
+              "Museums & Galleries": [
+                "Art Museums",
+                "Contemporary Art Spaces",
+                "Cultural Heritage Museums",
+                "Innovation & Tech Museums",
+                "Science & Tech Museums"
+              ],
+              "Natural Attractions": [
+                "Caves and Caverns",
+                "Cliffside Villages",
+                "Coral Reefs",
+                "Mountain Peaks",
+                "National Parks",
+                "Natural Hot Springs",
+                "Salt Flats",
+                "Volcanoes",
+                "Waterfalls"
+              ]
+            },
+            "Rentals": {
+              "Adventure Gear Rentals": [
+                "Camping Equipment Rentals",
+                "Mountain Bike Rentals",
+                "Snow Gear Rentals",
+                "Winter Sports Gear"
+              ],
+              "Vehicle Rentals": [
+                "4x4 Off-Road Vehicles",
+                "Campervan Rentals",
+                "Car Rentals",
+                "Electric Off-road Vehicles",
+                "Electric Scooter Rentals",
+                "Horse Rentals for Trail Riding",
+                "Motorbike Rentals",
+                "Scooter Rentals",
+                "Vintage Car Rentals"
+              ],
+              "Water Rentals": [
+                "Boat Rentals",
+                "Fishing Boat Rentals",
+                "Houseboat Rentals",
+                "Kayak Rentals",
+                "Luxury Yacht Rentals"
+              ]
+            },
+            "Transport": {
+              "Ferries": [
+                "Cultural Island Hopping",
+                "Island Hopping Ferries",
+                "Luxury Island Ferries",
+                "Wildlife Watching Ferries"
+              ],
+              "Private Drivers": [
+                "Cultural Day Tour Chauffeur",
+                "Custom Regional Tours",
+                "Guided Day Trips",
+                "VIP Chauffeur Services"
+              ],
+              "Public Transport": [
+                "Hop-On Hop-Off Buses",
+                "Tram and Trolley Rides"
+              ],
+              "Scenic Train Rides": [
+                "Coastal Rail Journeys",
+                "Desert Express",
+                "Jungle Express",
+                "Luxury Heritage Rail Journeys",
+                "Luxury Jungle Trains",
+                "Mountain Cliff Railways",
+                "Mountain Railways",
+                "Volcanic Route Trains"
+              ]
+            }
+          }  # Replace with your JSON
+
+
+        Task:
+        Analyze the description and generate a structured categorization following these rules:
+
+        1. Determine Experience Category:
+           - If experienceCategory is provided, use it directly.
+           - If not provided, infer the most relevant category(ies) (up to 3) from the taxonomy.
+
+        2. Extract Experience Types:
+           - For each selected category, identify the top 2 most relevant experience types from the taxonomy.
+
+        3. Extract Experience Subtypes:
+           - For each selected type, identify up to 4 relevant subtypes.
+
+        4. Generate Experience Tags:
+           - Produce 8 descriptive tags reflecting activities, amenities, and themes mentioned in the description and selected subtypes.
+
+        5. Generate Traveller Type Tags:
+           - Choose 3 tags from: "All Ages, Couples, Families, Groups, Kid-Friendly, LGBTQ+, Multi-Generational Families, Solo Travelers".
+
+        6. Generate Secondary Suggestions (if s_tag is True):
+           - Secondary Experience Types: Next 2 most relevant types (excluding primary types).
+           - Secondary Experience Subtypes: 1-3 relevant subtypes per secondary type.
+           - Secondary Experience Tags: 5 tags reflecting these secondary experiences.
+
+        Output JSON Format:
+
+        {{
+          "experienceCategory": ["Category1", "Category2", "Category3"],
+          "experienceTypes": ["Type1", "Type2"],
+          "experienceSubTypes": ["Subtype1", "Subtype2", "Subtype3", "Subtype4"],
+          "experienceTags": ["Tag1", "Tag2", "Tag3", "Tag4", "Tag5", "Tag6", "Tag7", "Tag8"],
+          "travellerTypeTags": ["TravellerType1", "TravellerType2", "TravellerType3"],
+          "secondaryTags": {{
+              "experienceTypes": ["SecondaryType1", "SecondaryType2"],
+              "experienceSubTypes": ["SecondarySubtype1", "SecondarySubtype2", "SecondarySubtype3"],
+              "experienceTags": ["SecondaryTag1", "SecondaryTag2", "SecondaryTag3", "SecondaryTag4", "SecondaryTag5"]
+          }}
+        }}
+
+        Rules:
+        - Only use categories, types, and subtypes from the provided taxonomy.
+        - Also generate the secondary tags defineitly
+        - JSON must be valid and parseable.
+        - Ensure all keys are present in the output exactly as above.
+        - Focus on accuracy, contextual understanding, and relevance.
+
+        End of Prompt.
+    unmanaged:
+      model: gemini-2.5-pro
+      prompt: |
+        Not Required
+
+  additionalInfo:
+    managed:
+      model: gemini-2.5-pro
+      prompt: |
+        You are an AI assistant specialized in categorizing tourism experiences.
+        You are given an arbitrary JSON object that may contain any keys related to a travel product or experience. 
+        From this input, generate a structured JSON block named "additionalInfo" in the following format:
+        
+        {
+          "additionalInfo": {
+            "other": {
+              "title": "Additional Info",
+              "desc": [ ... ]
+            },
+            "cancellation": {
+              "title": "Cancellation Policy",
+              "desc": [ ... ]
+            },
+            "exclusions": {
+              "title": "Exclusions",
+              "desc": [ ... ]
+            },
+            "inclusions": {
+              "title": "Inclusions",
+              "desc": [ ... ]
+            }
+          }
+        }
+        
+        ### Guidelines:
+        
+        1. **Inclusions / Exclusions**
+           - Reflect supplier-provided inclusions/exclusions exactly — do not alter, shorten, or paraphrase.
+           - Separate clearly into:
+             - `"What’s Included"` → factual inclusions such as services, amenities, meals, etc.
+             - `"What’s Not Included"` → explicit exclusions such as personal expenses, travel insurance, etc.
+           - Do not assume or invent standard inclusions like meals, guides, or transport.
+           - Use bullet-style formatting (JSON array of short strings).
+           - Maintain clear factual tone that reinforces this is a **Managed**, structured product.
+           - Word limit: *min 20, max 100 words per section.*
+        
+        2. **Cancellation**
+           - Extract cancellation, refund, or policy-related statements.
+           - Keep factual policy details exactly as given.
+        
+        3. **Other**
+           - Capture any miscellaneous supplier notes (e.g., health requirements, contact info, dress code).
+           - Do not duplicate information that already appears in other sections.
+        
+        4. **General Rules**
+           - Only include sections that have relevant data.
+           - Skip any section that would be empty.
+           - Output must be valid JSON.
+           - Do not include commentary or extra explanation outside JSON.
+        
+        5. **Titles must be exactly as shown:**
+           - "Additional Info"
+           - "Cancellation Policy"
+           - "Exclusions"
+           - "Inclusions"
+    unmanaged:
+      model: gemini-2.5-pro
+      prompt: |
+        Offer extra insights, fun facts, or background details related to the topic.
+
+# Optional: Global or runtime settings
+settings:
+  default_model: gemini-2.5-pro
+  output_dir: ./outputs
+  logging_level: info
+  cache_responses: true
+
+```

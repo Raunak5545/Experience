@@ -1,7 +1,6 @@
 import traceback
 from fastapi import APIRouter, UploadFile, File
-import shutil
-import os
+import shutil, os, traceback, asyncio
 
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.workflow import start_agentic_process
@@ -31,10 +30,7 @@ async def create_experience(file: UploadFile = File(...)):
             os.remove(temp_file_path)
 
 
-from fastapi import UploadFile, File, APIRouter
-import shutil, os, traceback, asyncio
 
-router = APIRouter()
 
 @router.post("/create-experience/multiple-files")
 async def create_experience(files: list[UploadFile] = File(...)):

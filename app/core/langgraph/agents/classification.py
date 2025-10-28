@@ -25,7 +25,7 @@ class ClassificationAgent:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.VALIDATION_MODEL,
             temperature=0.1,
             google_api_key=settings.LLM_API_KEY,
         )
@@ -49,11 +49,11 @@ class ClassificationAgent:
 
 
         Respond strictly in JSON format with these fields:
-        {
+        {{
         "type": "MANAGED" or "UNMANAGED",
         "Explanation": "Explain which elements were found or missing",
         "classification_confidence": 0.88
-        }"""
+        }}"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
         

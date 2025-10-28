@@ -2,8 +2,9 @@ import operator
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import BaseMessage
+from regex import E
 
-from app.core.langgraph.schema.experience import BasicInfo, Experience, ExperienceTagsOutputScehma, TravelPlan
+from app.core.langgraph.schema.experience import BasicInfo, Experience, ExperienceTagsOutputScehma, TravelPlan,Eval
 
 class TravelAgentState(TypedDict):
     input_text: str
@@ -30,3 +31,4 @@ class TravelAgentState(TypedDict):
     travel_plan :TravelPlan
     experience : Experience
     tags_info : ExperienceTagsOutputScehma
+    evaluation : Eval

@@ -5,6 +5,7 @@ from fastapi import File, HTTPException
 from langgraph.graph import END, StateGraph
 from app.core.langgraph.agents.basic_info import BasicInfoAgent
 from app.core.langgraph.agents.classification import ClassificationAgent
+from app.core.langgraph.agents.eval import EvalAgent
 from app.core.langgraph.agents.extraction import ExtractionAgent
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.plan_agent import PlanAgent
@@ -29,6 +30,7 @@ def create_travel_workflow():
     classification_agent = ClassificationAgent()
     basic_info_agent = BasicInfoAgent()
     plan_agent = PlanAgent()
+    eval_agent = EvalAgent()
     
     # Create node functions
     def extraction_node(state: TravelAgentState) -> Dict[str, Any]:
@@ -56,6 +58,7 @@ def create_travel_workflow():
         tags_info = state.get("tags_info")
         travel_plan = state.get("travel_plan")
         classification_type = state.get("classification_type")
+        
 
         logger.info(basic_info)
         # Use .model_dump() if model exists, else {}
@@ -67,6 +70,11 @@ def create_travel_workflow():
         }
         return {"experience": experience}
 
+    def eval_node(state: TravelAgentState) -> Dict[str, Any]:
+        """Evaluate the final structured"""
+        return eval_agent.execute(state)
+    
+    
     # Build workflow graph
     workflow = StateGraph(TravelAgentState)
 
@@ -77,6 +85,7 @@ def create_travel_workflow():
     workflow.add_node("basic_info", basic_info_node)
     workflow.add_node("plan", plan_agent_node)
     workflow.add_node("combine_node", combine_node)
+    workflow.add_node("eval_node", eval_node)
     
     # Set entry point
     workflow.set_entry_point("extraction")
@@ -93,8 +102,11 @@ def create_travel_workflow():
     workflow.add_edge("basic_info", "combine_node")
     workflow.add_edge("plan", "combine_node")
     
-    # 4. Combine Node → End
-    workflow.add_edge("combine_node", END)
+    #4 Combine Node → Eval Node
+    workflow.add_edge("combine_node", "eval_node")
+    
+    # 4. Eval Node → End
+    workflow.add_edge("eval_node", END)
     
     return workflow.compile()
 
@@ -140,7 +152,9 @@ def start_agentic_process(file_path: str = None, raw_input: str = None):
         "messages": [],
         "basic_info": None,
         "travel_plan": None,
-        "experience": None
+        "experience": None,
+        "tags_info": None,
+        "evaluation": None
     }
     
     # Run the workflow
@@ -171,29 +185,3 @@ def start_agentic_process(file_path: str = None, raw_input: str = None):
             status_code=500,
             detail=f"Workflow execution failed: {str(e)}"
         )
-
-
-# Optional: Helper function to visualize the workflow
-def visualize_workflow():
-    """
-    Generate a visual representation of the workflow
-    (Requires additional dependencies like matplotlib/graphviz)
-    """
-    workflow = create_travel_workflow()
-    
-    print("\nWORKFLOW STRUCTURE:")
-    print("-" * 40)
-    print("1. EXTRACTION_AGENT")
-    print("   ↓")
-    print("2. CLASSIFICATION_AGENT")
-    print("   ↓")
-    print("3. [PARALLEL EXECUTION]")
-    print("   ├── BASIC_INFO_AGENT")
-    print("   └── PLAN_AGENT")
-    print("   ↓")
-    print("4. COMBINE_NODE")
-    print("   ↓")
-    print("5. END")
-    print("-" * 40)
-    
-    return workflow

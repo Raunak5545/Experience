@@ -152,6 +152,13 @@ class Settings:
         self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
+
+        self.EXTRACTION_MODEL = os.getenv("EXTRACTION_MODEL", self.LLM_MODEL)
+        self.VALIDATION_MODEL = os.getenv("VALIDATION_MODEL", self.LLM_MODEL)
+        self.BASIC_INFO_MODEL = os.getenv("BASIC_INFO_MODEL", self.LLM_MODEL)
+        self.CLASSIFICATION_MODEL = os.getenv("CLASSIFICATION_MODEL", self.LLM_MODEL)
+        self.PLAN_ITINERARY_MODEL = os.getenv("PLAN_ITINERARY_MODEL", self.LLM_MODEL)
+
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
 
@@ -246,4 +253,3 @@ class Settings:
 
 # Create settings instance
 settings = Settings()
-settings.LLM_MODEL = "gemini-flash-latest"

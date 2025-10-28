@@ -3,7 +3,7 @@ from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import BaseMessage
 
-from app.core.langgraph.schema.experience import BasicInfo, Experience, TravelPlan
+from app.core.langgraph.schema.experience import BasicInfo, Experience, ExperienceTagsOutputScehma, TravelPlan
 
 class TravelAgentState(TypedDict):
     input_text: str
@@ -26,6 +26,7 @@ class TravelAgentState(TypedDict):
 
     failed_reason: str
 
-    basic_info :BasicInfo
+    basic_information :BasicInfo
     travel_plan :TravelPlan
     experience : Experience
+    tags_info : ExperienceTagsOutputScehma

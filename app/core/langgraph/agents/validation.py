@@ -13,30 +13,29 @@ class ValidationAgent:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.VALIDATION_MODEL,
             temperature=0.2,
             google_api_key=settings.LLM_API_KEY 
         )
     
     def check_completeness(self, extracted_text: str) -> Dict[str, Any]:
         prompt = f"""Analyze the following travel information and determine if it contains:
-1. Destination or City (specific location)
-2. Travel Dates (at least one date reference)
-3. Number of Travelers (explicit or implied)
+        1. Destination or City (specific location)
+        2. Activities or Attractions
 
-**Return validated if we have everything that we need**
-Extracted Information:
+        Prompt user and ask for missing information if any of the above are absent.
 
-{extracted_text}
+        **Return validated if we have everything that we need**
+        Extracted Information:
 
-Respond in JSON format:
-{{
-    "has_destination": true/false,
-    "is_validated" : true/false,
-    "validation_prompt": "Extra instructions for the previous agent to try to fetch these missing information",
-    "failed_reason" : "The reason due to which we the validation_failed"
-    "confidence": "0-1"
-}}"""
+        {extracted_text}
+
+        Respond in JSON format:
+        {{
+        "validated": false,
+        "prompt": ""
+        }}
+        """
         response = self.llm.invoke([HumanMessage(content=prompt)])
         
         try:
@@ -55,7 +54,6 @@ Respond in JSON format:
         extracted_text = state.get("extracted_text", "")
         validation_attempts = state.get("validation_attempts", 0)
         validation_result = self.check_completeness(extracted_text)
-        print(validation_result)
         has_destination = validation_result.get("has_destination", [])
         is_validated =  validation_result.get("is_validated",False)
         failed_reason = validation_result.get("failed_reason","")
@@ -85,7 +83,7 @@ Respond in JSON format:
                     "validated": False,
                     "validation_attempts": validation_attempts + 1,
                     "validation_prompt": "No Destination",
-                    "next": "end"
+                    "next": "classification"
                 }
             return {
                 "validated": False,

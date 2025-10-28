@@ -66,4 +66,14 @@ class Experience(BasicInfo):
     plan_type:str =  Field(...,description="Type of plan, MANAGED/UNMANAGED")
     tags_info :  ExperienceTagsOutputScehma = Field(...,description="Tags,category,types and subtypes")
     travel_plan: TravelPlan
+    
+    
+class Eval(BaseModel):
+    hallucination: float = Field(..., description="Evaluation of hallucination in the output (0.0 to 1.0)")
+    accuracy: float = Field(..., description="Evaluation of accuracy in the output (0.0 to 1.0)")
+    conciseness: float = Field(..., description="Evaluation of conciseness in the output (0.0 to 1.0)")
+    structure_compliance: str = Field(..., description="Evaluation of structure compliance, e.g., 'Pass' or 'Fail'")
+    overall_score: float = Field(..., description="Overall evaluation score (0.0 to 1.0)")
+    validation_required: bool = Field(..., description="Whether validation is required")
+    validation_reason: str = Field(default="", description="Reason for validation requirement")
 

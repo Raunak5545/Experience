@@ -1,9 +1,16 @@
 import traceback
 from fastapi import APIRouter, UploadFile, File
+<<<<<<< Updated upstream
 import shutil, os, traceback, asyncio
+=======
+import tempfile
+import shutil
+import os
+>>>>>>> Stashed changes
 
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.workflow import start_agentic_process
+
 
 router = APIRouter()
 
@@ -37,7 +44,8 @@ async def create_experience(files: list[UploadFile] = File(...)):
     results = []
 
     async def process_file(file: UploadFile):
-        temp_file_path = f"/tmp/{file.filename}"
+        temp_dir = tempfile.gettempdir()
+        temp_file_path = os.path.join(temp_dir, file.filename)
         try:
             # Save file asynchronously
             with open(temp_file_path, "wb") as buffer:

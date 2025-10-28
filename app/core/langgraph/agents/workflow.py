@@ -5,6 +5,7 @@ from fastapi import File, HTTPException
 from langgraph.graph import END, StateGraph
 from app.core.langgraph.agents.basic_info import BasicInfoAgent
 from app.core.langgraph.agents.classification import ClassificationAgent
+from app.core.langgraph.agents.eval import EvalAgent
 from app.core.langgraph.agents.extraction import ExtractionAgent
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.plan_agent import PlanAgent

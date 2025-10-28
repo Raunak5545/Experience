@@ -1,5 +1,7 @@
 import os
+import time
 from typing import Dict, Any, Optional
+from fastapi import HTTPException
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from google import genai
@@ -70,8 +72,22 @@ class ExtractionAgent:
 
         task_prompt = extra_prompt  or  "Extract key travel information (dates, destinations, travelers, etc.) from this file."
         full_prompt = f"{self.prompt}\n\n{task_prompt}"
-        
+        # Timeout
+        start_time = time.time() 
+
         uploaded_file = self.multimodal_client.files.upload(file=file_path)
+        while True:
+            current_file = self.multimodal_client.files.get(name=uploaded_file.name)
+            print("Current state:", current_file.state)
+            if current_file.state == "ACTIVE":
+                break
+            elif current_file.state == "FAILED":
+                raise RuntimeError("File processing failed.")
+            curr_time = time.time()
+            diff_time = curr_time - start_time
+            if diff_time > 20:
+                raise HTTPException(status_code=502,detail="Timed out while trying to upload the file.")
+            time.sleep(2)
         response = self.multimodal_client.models.generate_content(
             model=settings.EXTRACTION_MODEL,
             contents=[uploaded_file, full_prompt]

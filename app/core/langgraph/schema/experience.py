@@ -74,6 +74,6 @@ class Eval(BaseModel):
     conciseness: float = Field(..., description="Evaluation of conciseness in the output (0.0 to 1.0)")
     structure_compliance: str = Field(..., description="Evaluation of structure compliance, e.g., 'Pass' or 'Fail'")
     overall_score: float = Field(..., description="Overall evaluation score (0.0 to 1.0)")
-    validation_required: bool = Field(..., description="Whether validation is required")
     validation_reason: str = Field(default="", description="Reason for validation requirement")
+    
 

@@ -68,6 +68,7 @@ class ExtractionAgent:
 
     def extract_from_file(self, file_path: str, extra_prompt: Optional[str] = None) -> str:
         if not os.path.exists(file_path):
+
             raise FileNotFoundError(f"File not found: {file_path}")
 
         task_prompt = extra_prompt  or  "Extract key travel information (dates, destinations, travelers, etc.) from this file."

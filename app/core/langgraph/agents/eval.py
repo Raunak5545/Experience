@@ -112,13 +112,18 @@ class EvalAgent:
         - Assess clarity, completeness, and logical structure.  
         - Recommend validation if overall_score < 80, hallucination > 0.15, or structure_compliance == "Fail".
 
+        ## ALSO PROVIDE REASON FOR YOUR SCORING
+
         ### ✅ Output Format
         Return strictly in JSON format like this:
         ```json
         {{
           "hallucination": <float>,
+          "hallucination_score_reason": <string>,
           "accuracy": <float>,
+          "accuracy_score_reason": <string>,
           "conciseness": <float>,
+          "conciseness_score_reason": <string>,
           "structure_compliance": <string>,
           "overall_score": <integer>,
           "validation_reason": <string>

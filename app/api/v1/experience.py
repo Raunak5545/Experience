@@ -19,7 +19,7 @@ async def create_experience(file: UploadFile = File(...)):
 
         
         res = start_agentic_process(temp_file_path)
-        return {"filename": file.filename, "experience": res}
+        return {"filename": file.filename, "experience": res.get("experience")}
 
     except Exception as e:
         # Handle exceptions
@@ -49,7 +49,7 @@ async def create_experience(files: list[UploadFile] = File(...)):
             # Run your processing (can also be made async if start_agentic_process supports it)
             res = await asyncio.to_thread(start_agentic_process, temp_file_path)
 
-            return {"filename": file.filename, "experience": res}
+            return {"filename": file.filename, "experience": res.get("experience")}
 
         except Exception as e:
             traceback.print_exc()

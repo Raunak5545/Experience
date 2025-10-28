@@ -186,20 +186,24 @@ class BasicInfoAgent:
         
         # If final message is empty, the agent might have finished with a tool call
         # We need to prompt it again to generate the final JSON
-        if not final_message.content or final_message.content.strip() == "":
+        
+        if (
+            not final_message.content
+            or (isinstance(final_message.content, str) and final_message.content.strip() == "")
+        ):
             print("Final message empty, requesting JSON output...")
             result = self.agent_executor.invoke(
-                        {
-                            "messages": [HumanMessage(content=self.tags_prompt.format(text=extracted_text))]
-                        },
-                        config={
-                            "max_iterations": 1,   # single reasoning step
-                            "timeout": 60,
-                            "stream": False
-                        }
-                    )        
+                {
+                    "messages": [HumanMessage(content=self.tags_prompt.format(text=extracted_text))]
+                },
+                config={
+                    "max_iterations": 1,   # single reasoning step
+                    "timeout": 60,
+                    "stream": False
+                }
+            )
 
-            final_message = result["messages"][-1]
+        final_message = result["messages"][-1]
         
         print(f"Final message content: {final_message.content}")
         

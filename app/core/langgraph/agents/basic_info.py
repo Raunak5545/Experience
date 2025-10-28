@@ -9,7 +9,7 @@ from app.core.langgraph.schema.experience import BasicInfo, ExperienceTagsOutput
 from langchain_core.tools import tool
 from app.core.langgraph.data.experience_taxonomy import TAXONOMY
 from app.core.langgraph.tools.experience_types_tags import get_full_experience_taxonomy
-
+import time
 
 
 class BasicInfoAgent:
@@ -137,9 +137,12 @@ class BasicInfoAgent:
             return {"next": "extraction"}
         
         llm_structured = self.llm.with_structured_output(BasicInfo)
+        start = time.time()
         response = llm_structured.invoke([
             HumanMessage(self.prompt.format(text=extracted_text))
         ])
+        duration = time.time() - start
+        print(f"[Timing] BasicInfoAgent LLM call finished in {duration:.2f} seconds.")
         tags_info = self.extract_tags(state)
         print("Returning from basic-info")
         return {"basic_info": response,"tags_info":tags_info}
@@ -148,12 +151,18 @@ class BasicInfoAgent:
         extracted_text = state.get("extracted_text")
         if not extracted_text:
             return {"next": "extraction"}
-
+        start = time.time()
         # First invocation - let agent use tools
-        result = self.agent_executor.invoke({
-            "messages": [HumanMessage(content=self.tags_prompt.format(text=extracted_text))]
-        })
-        
+        result = self.agent_executor.invoke(
+                        {
+                            "messages": [HumanMessage(content=self.tags_prompt.format(text=extracted_text))]
+                        },
+                        config={
+                            "max_iterations": 1,   # single reasoning step
+                            "timeout": 60,
+                            "stream": False
+                        }
+                    )        
         print("Agent result messages:")
         for msg in result["messages"]:
             print(f"Type: {type(msg).__name__}, Content: {msg.content[:200] if msg.content else 'EMPTY'}")
@@ -164,18 +173,29 @@ class BasicInfoAgent:
         # We need to prompt it again to generate the final JSON
         if not final_message.content or final_message.content.strip() == "":
             print("Final message empty, requesting JSON output...")
-            result = self.agent_executor.invoke({
-                "messages": result["messages"] + [
-                    HumanMessage(content="Now provide the complete JSON output based on the taxonomy you retrieved.")
-                ]
-            })
+            result = self.agent_executor.invoke(
+                        {
+                            "messages": [HumanMessage(content=self.tags_prompt.format(text=extracted_text))]
+                        },
+                        config={
+                            "max_iterations": 1,   # single reasoning step
+                            "timeout": 60,
+                            "stream": False
+                        }
+                    )        
+
             final_message = result["messages"][-1]
         
         print(f"Final message content: {final_message.content}")
         
         llm_structured = self.llm.with_structured_output(ExperienceTagsOutputScehma)
+        tag_start = time.time()
         tags_info = llm_structured.invoke([
             HumanMessage(content=f"Convert this to structured format: {final_message.content}")
         ])
+        tag_duration = time.time() - tag_start
+        print(f"[Timing] BasicInfoAgent tags LLM call finished in {tag_duration:.2f} seconds.")
         print(tags_info)
+        total_duration = time.time() - start
+        print(f"[Timing] BasicInfoAgent extract_tags total finished in {total_duration:.2f} seconds.")
         return tags_info

@@ -1,4 +1,5 @@
 import json
+import time
 from typing import (
     Any,
     Dict,
@@ -54,9 +55,10 @@ class ClassificationAgent:
         "Explanation": "Explain which elements were found or missing",
         "classification_confidence": 0.88
         }}"""
-
+        start = time.time()
         response = self.llm.invoke([HumanMessage(content=prompt)])
-        
+        duration = time.time() - start
+        print(f"[Timing] ClassificationAgent LLM call finished in {duration:.2f} seconds.")
         try:
             result = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
             return result

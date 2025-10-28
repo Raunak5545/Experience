@@ -85,7 +85,7 @@ class ExtractionAgent:
                 raise RuntimeError("File processing failed.")
             curr_time = time.time()
             diff_time = curr_time - start_time
-            if diff_time > 20:
+            if diff_time > 60:
                 raise HTTPException(status_code=502,detail="Timed out while trying to upload the file.")
             time.sleep(2)
         response = self.multimodal_client.models.generate_content(

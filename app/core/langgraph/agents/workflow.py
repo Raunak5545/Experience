@@ -1,6 +1,6 @@
 import json
 from typing import Any, Dict
-
+from app.core.logging import logger
 from fastapi import File, HTTPException
 from langgraph.graph import END, StateGraph
 from app.core.langgraph.agents.basic_info import BasicInfoAgent
@@ -57,6 +57,7 @@ def create_travel_workflow():
         travel_plan = state.get("travel_plan")
         classification_type = state.get("classification_type")
 
+        logger.info(basic_info)
         # Use .model_dump() if model exists, else {}
         experience = {
             **(basic_info.model_dump() if basic_info else {}),
@@ -64,7 +65,6 @@ def create_travel_workflow():
             "travel_plan": travel_plan.model_dump() if travel_plan else None,
             "tags_info": tags_info.model_dump() if tags_info else None,
         }
-
         return {"experience": experience}
 
     # Build workflow graph

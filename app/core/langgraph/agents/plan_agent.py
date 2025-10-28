@@ -4,6 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.schema.experience import TravelPlan
+import time
 
 class PlanAgent:
     """
@@ -80,12 +81,14 @@ class PlanAgent:
             }
 
         llm_structured = self.llm.with_structured_output(TravelPlan)
+        start = time.time()
         response = llm_structured.invoke(
             [
                 HumanMessage(self.prompt.format(text=extracted_text)),
             ]
         )
-
+        duration = time.time() - start
+        print(f"[Timing] PlanAgent LLM call finished in {duration:.2f} seconds.")
         print("Returning from plan_agent")
         return {
             "travel_plan": response

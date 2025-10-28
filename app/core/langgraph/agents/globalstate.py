@@ -26,7 +26,7 @@ class TravelAgentState(TypedDict):
 
     failed_reason: str
 
-    basic_info :BasicInfo
+    basic_information :BasicInfo
     travel_plan :TravelPlan
     experience : Experience
     tags_info : ExperienceTagsOutputScehma

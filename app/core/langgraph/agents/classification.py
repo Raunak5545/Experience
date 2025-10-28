@@ -25,7 +25,7 @@ class ClassificationAgent:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.VALIDATION_MODEL,
             temperature=0.1,
             google_api_key=settings.LLM_API_KEY,
         )

@@ -16,12 +16,24 @@ class FAQ(BaseModel):
     question: str = Field(description="A question relevant to the tour or experience, inspired by details in the source text.")
     answer: str = Field(description="A concise answer to the question, paraphrased or directly quoted from the source text.")
 
+class SecondaryTags(BaseModel):
+    experienceTypes: Optional[List[str]] = Field(default_factory=list, description="Secondary experience types.")
+    experienceSubTypes: Optional[List[str]] = Field(default_factory=list, description="Secondary experience subtypes.")
+    experienceTags: Optional[List[str]] = Field(default_factory=list, description="Secondary experience tags.")
+
+class ExperienceTagsOutputScehma(BaseModel):
+    experienceCategory: Optional[List[str]] = Field(default_factory=list, description="Categories of the experience.")
+    experienceTypes: Optional[List[str]] = Field(default_factory=list, description="Primary experience types.")
+    experienceSubTypes: Optional[List[str]] = Field(default_factory=list, description="Primary experience subtypes.")
+    experienceTags: Optional[List[str]] = Field(default_factory=list, description="Primary experience tags.")
+    secondaryTags: Optional[SecondaryTags] = Field(default_factory=SecondaryTags, description="Secondary tagging info.")
+
 class BasicInfo(BaseModel):
     caption: str = Field(description="A short, engaging one-line caption summarizing the tour or experience.")
     summary: List[str] = Field(description="A list of bullet points summarizing key aspects of the tour or experience from the text.")
     location: Location = Field(description="Details of the location where the tour or experience takes place.")
     inclusion:Optional[ List[str]] = Field(description="A list of items or services included in the tour or experience, extracted from the text.")
-    exclusion: Optional[List[str]] = Field(description="A list of items or services not included in the tour or experience, extracted from the text.")
+    exclusion: Optional[List[str]] = Field(description="A list of items or services not included in the tour or experience, extracted from the text.") 
     faq: List[FAQ] = Field(description="A list of question-answer pairs relevant to the tour or experience, inspired by the source text. Can be empty or contain any number of FAQs.")
 
 class TypeValue(BaseModel):
@@ -52,5 +64,6 @@ class TravelPlan(BaseModel):
 
 class Experience(BasicInfo):
     plan_type:str =  Field(...,description="Type of plan, MANAGED/UNMANAGED")
+    tags_info :  ExperienceTagsOutputScehma = Field(...,description="Tags,category,types and subtypes")
     travel_plan: TravelPlan
 

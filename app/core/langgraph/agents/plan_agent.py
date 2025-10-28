@@ -13,7 +13,7 @@ class PlanAgent:
 
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.PLAN_ITINERARY_MODEL,
             temperature=0.4,
             google_api_key=settings.LLM_API_KEY
         )
@@ -86,6 +86,7 @@ class PlanAgent:
             ]
         )
 
+        print("Returning from plan_agent")
         return {
             "travel_plan": response
         }

@@ -50,29 +50,26 @@ def create_travel_workflow():
     def plan_agent_node(state: TravelAgentState) -> Dict[str, Any]:
         """Generate day-wise travel itinerary"""
         return plan_agent.execute(state)
-    
-    def combine_node(state: TravelAgentState) -> Dict[str, Any]:
-        """Merge outputs from parallel agents into final structure"""
-        basic_info = state.get("basic_information", {})
-        travel_plan = state.get("travel_plan", {})
-        
-        # Convert basic_info to dict if it has model_dump method
-        basic_info_dict = basic_info.model_dump() if hasattr(basic_info, 'model_dump') else basic_info
-        travel_plan_dict = travel_plan.model_dump() if hasattr(travel_plan, 'model_dump') else travel_plan
-        
-        print("Basic Info Dict:", basic_info_dict)
-        
-        # Combine all information into final experience structure
+    def combine_node(state: "TravelAgentState") -> Dict[str, Any]:
+        # Safely extract Pydantic models or default to None
+        basic_info = state.get("basic_info")
+        tags_info = state.get("tags_info")
+        travel_plan = state.get("travel_plan")
+        classification_type = state.get("classification_type")
+
+        # Use .model_dump() if model exists, else {}
         experience = {
-            **basic_info_dict,
-            **travel_plan_dict,
+            **(basic_info.model_dump() if basic_info else {}),
+            "plan_type": classification_type,
+            "travel_plan": travel_plan.model_dump() if travel_plan else None,
+            "tags_info": tags_info.model_dump() if tags_info else None,
         }
-        
-        return experience
-    
+
+        return {"experience": experience}
+
     # Build workflow graph
     workflow = StateGraph(TravelAgentState)
-    
+
     # Add nodes
     workflow.add_node("extraction", extraction_node)
     # Note: validation node not added to graph per requirements
@@ -150,7 +147,6 @@ def start_agentic_process(file_path: str = None, raw_input: str = None):
     try:
         result = app.invoke(initial_state)
         
-        # Log workflow results
         print("\n" + "=" * 80)
         print("WORKFLOW EXECUTION COMPLETED")
         print("=" * 80)

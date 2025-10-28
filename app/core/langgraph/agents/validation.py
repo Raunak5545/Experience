@@ -13,7 +13,7 @@ class ValidationAgent:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
+            model=settings.VALIDATION_MODEL,
             temperature=0.2,
             google_api_key=settings.LLM_API_KEY 
         )
@@ -54,7 +54,6 @@ class ValidationAgent:
         extracted_text = state.get("extracted_text", "")
         validation_attempts = state.get("validation_attempts", 0)
         validation_result = self.check_completeness(extracted_text)
-        print(validation_result)
         has_destination = validation_result.get("has_destination", [])
         is_validated =  validation_result.get("is_validated",False)
         failed_reason = validation_result.get("failed_reason","")
@@ -84,7 +83,7 @@ class ValidationAgent:
                     "validated": False,
                     "validation_attempts": validation_attempts + 1,
                     "validation_prompt": "No Destination",
-                    "next": "end"
+                    "next": "classification"
                 }
             return {
                 "validated": False,

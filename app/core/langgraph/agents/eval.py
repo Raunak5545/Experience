@@ -162,19 +162,49 @@ class EvalAgent:
         except Exception as e:
             return self._error_fallback(str(e))
 
-    def evaluate_from_file(self, state) -> Dict[str, Any]:
-        """Uploads and evaluates all input files along with the extracted experience."""
+    def evaluate_input(self, state) -> Dict[str, Any]:
+        """Evaluates input files or URLs along with the extracted experience."""
+        from app.utils.file_handler import prepare_content_message
+
         experience = state.get("experience", {})
-        file_path = state.get("input_file_path")
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        file_input = state.get("input_file_path")
+        is_url = state.get("is_url", False)
+        session_id = state.get("session_id", "")
+
+        eval_prompt = f"""
+        {self.prompt}
+
+        ### 🔹 Extracted Experience (Final Output)
+        {json.dumps(experience, indent=2)}
+        """
+
+        if is_url:
+            try:
+                content = prepare_content_message(eval_prompt, file_input, is_url=True)
+                response = self.eval_llm.invoke(
+                    [HumanMessage(content=content)],
+                    config={
+                        "callbacks": [langfuse_handler],
+                        "langfuse_session_id": session_id,
+                    },
+                )
+                content = response.content.strip()
+                if content.startswith("```json"):
+                    content = content.replace("```json", "").replace("```", "").strip()
+                return json.loads(content)
+            except Exception as e:
+                return self._error_fallback(str(e))
+
+        # For file uploads
+        if not os.path.exists(file_input):
+            raise FileNotFoundError(f"File not found: {file_input}")
 
         # Upload file to Google GenAI
         uploaded_file = state.get("input_file")
         if not uploaded_file:
-            logger.info("Couldnot find uploaded_file uploading a new file")
-            print("Couldnot find uploaded_file uploading a new file")
-            uploaded_file = self.multimodal_client.files.upload(file=file_path)
+            logger.info("Could not find uploaded_file uploading a new file")
+            print("Could not find uploaded_file uploading a new file")
+            uploaded_file = self.multimodal_client.files.upload(file=file_input)
 
         # Wait until ACTIVE or timeout
         start_time = time.time()
@@ -221,7 +251,7 @@ class EvalAgent:
 
         try:
             if file_path:
-                evaluation = self.evaluate_from_file(state)
+                evaluation = self.evaluate_input(state)
             elif raw_input:
                 evaluation = self.evaluate_from_text(state)
             else:

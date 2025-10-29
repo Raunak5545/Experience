@@ -1,15 +1,18 @@
 import os
 import time
-from typing import Dict, Any, Optional
-from fastapi import HTTPException
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
-from google import genai
+from typing import (
+    Any,
+    Dict,
+    Optional,
+)
 
+from fastapi import HTTPException
+from google import genai
+from langchain_core.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 
 
@@ -18,7 +21,7 @@ class ExtractionAgent:
 
     def __init__(self):
         self.text_llm = ChatGoogleGenerativeAI(
-            model=settings.EVALUATION_LLM,
+            model=settings.EXTRACTION_MODEL,
             temperature=0.3,
             google_api_key=settings.LLM_API_KEY,
         )
@@ -71,19 +74,45 @@ class ExtractionAgent:
         )
         return response.content
 
-    def extract_from_file(self, file_path: str, extra_prompt: Optional[str] = None) -> str:
-        if not os.path.exists(file_path):
-
-            raise FileNotFoundError(f"File not found: {file_path}")
+    def extract_from_input(
+        self,
+        state,
+        file_input: str,
+        extra_prompt: Optional[str] = None,
+    ) -> str:
+        """
+        Extract information from either a file path or URL.
+        Args:
+            file_input: Path to file or URL
+            extra_prompt: Additional prompt text
+            is_url: Whether the input is a URL
+        """
+        from app.utils.file_handler import prepare_content_message
 
         task_prompt = (
             extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
         )
         full_prompt = f"{self.prompt}\n\n{task_prompt}"
+        is_url = state.get("is_url")
+        if is_url:
+            content = prepare_content_message(full_prompt, file_input, is_url=True)
+            response = self.text_llm.invoke(
+                [HumanMessage(content=content)],
+                config={
+                    "callbacks": [langfuse_handler],
+                    "langfuse_session_id": state.get("session_id"),
+                },
+            )
+            response.response_metadata
+            return response.content, None
+
+        # For file uploads
+        if not os.path.exists(file_input):
+            raise FileNotFoundError(f"File not found: {file_input}")
+
         # Timeout
         start_time = time.time()
-
-        uploaded_file = self.multimodal_client.files.upload(file=file_path)
+        uploaded_file = self.multimodal_client.files.upload(file=file_input)
         while True:
             current_file = self.multimodal_client.files.get(name=uploaded_file.name)
             print("Current state:", current_file.state)
@@ -107,7 +136,11 @@ class ExtractionAgent:
         file_path: Optional[str] = state.get("input_file_path")
 
         if file_path:
-            extracted_text, uploaded_file = self.extract_from_file(file_path, state.get("validation_prompt"))
+            extracted_text, uploaded_file = self.extract_from_input(
+                state,
+                file_path,
+                state.get("validation_prompt"),
+            )
         elif raw_input:
             extracted_text = self.extract_from_text(raw_input)
         else:

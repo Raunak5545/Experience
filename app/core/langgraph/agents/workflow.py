@@ -17,12 +17,16 @@ def create_travel_workflow():
     """Create the LangGraph workflow
 
     Workflow Flow:
-    1. Extraction Agent - Processes all modalities (text/audio/image/pdf/video)
+    1. Extraction Agent - Processes all modalities (text/audio/image/pdf/video) from file or URL
     2. Classification Agent - Classifies content as Managed/Unmanaged
     3. Parallel Processing:
        - Basic Info Agent - Extracts metadata
        - Plan Agent - Creates day-wise itinerary
     4. Combine Node - Merges outputs into final structured JSON
+
+    Input can be either:
+    - File upload: Local file processed through multimodal client
+    - URL: Remote file processed through text LLM with multimodal content
     """
 
     # Initialize agents
@@ -109,74 +113,18 @@ def create_travel_workflow():
     return workflow.compile()
 
 
-def start_agentic_process(file_path: str = None, raw_input: str = None):
+def start_agentic_process(file_input: str, is_url: bool = False) -> Dict[str, Any]:
     """
-    Start the agentic travel planning process
+    Start the agentic workflow process.
 
     Args:
-        file_path: Path to input file (image/pdf/video/audio)
-        raw_input: Raw text input (if no file provided)
-
-    Returns:
-        Dict containing the final structured travel experience
+        file_input: Either a file path or URL
+        is_url: Whether the input is a URL
     """
+    # Initialize workflow
+    workflow = create_travel_workflow()
 
-    # Validate input
-    if not file_path and not raw_input:
-        raise HTTPException(status_code=400, detail="Either file_path or raw_input must be provided")
+    state = {"input_file_path": file_input, "is_url": is_url, "session_id": str(uuid.uuid4())}
+    result = workflow.invoke(state)
 
-    # Create workflow
-    app = create_travel_workflow()
-
-    # Initialize state
-    session_id = str(uuid.uuid1())
-    initial_state: TravelAgentState = {
-        "session_id": session_id,
-        "input_text": raw_input or "",
-        "input_file_path": file_path,
-        "raw_input": raw_input,  # Add raw_input to state
-        "extracted_text": "",
-        "extraction_complete": False,
-        "validated": False,
-        "validation_attempts": 0,
-        "missing_fields": [],
-        "validation_prompt": "",
-        "classification_type": "",
-        "classification_reason": "",
-        "final_itinerary": {},
-        "next": "",
-        "failed_reason": "",
-        "messages": [],
-        "basic_info": None,
-        "travel_plan": None,
-        "experience": None,
-        "tags_info": None,
-        "evaluation": None,
-    }
-
-    # Run the workflow
-    try:
-        result = app.invoke(initial_state)
-
-        print("\n" + "=" * 80)
-        print("WORKFLOW EXECUTION COMPLETED")
-        print("=" * 80)
-        print(f"Classification Type: {result.get('classification_type', 'N/A').upper()}")
-        print(f"Classification Reason: {result.get('classification_reason', 'N/A')}")
-        print(f"Extraction Complete: {result.get('extraction_complete', False)}")
-
-        # Display final experience/itinerary
-        if result.get("experience"):
-            print("\n" + "-" * 40)
-            print("FINAL STRUCTURED OUTPUT:")
-            print("-" * 40)
-            print(json.dumps(result.get("experience", {}), indent=2))
-
-        return result
-
-    except Exception as e:
-        print(f"\nError during workflow execution: {e}")
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Workflow execution failed: {str(e)}")
+    return result

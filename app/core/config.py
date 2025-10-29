@@ -158,6 +158,7 @@ class Settings:
         self.BASIC_INFO_MODEL = os.getenv("BASIC_INFO_MODEL", self.LLM_MODEL)
         self.CLASSIFICATION_MODEL = os.getenv("CLASSIFICATION_MODEL", self.LLM_MODEL)
         self.PLAN_ITINERARY_MODEL = os.getenv("PLAN_ITINERARY_MODEL", self.LLM_MODEL)
+        self.EVALUATION_MODEL = os.getenv("EVALUATION_MODEL", self.LLM_MODEL)
 
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))

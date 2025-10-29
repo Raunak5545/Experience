@@ -10,6 +10,9 @@ from google import genai
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+
+
 class ExtractionAgent:
     """Agent that extracts travel information from text or multimodal input."""
 
@@ -61,9 +64,11 @@ class ExtractionAgent:
         **Return only the final structured narrative — no headings, bullet points, or notes.**
         """
 
-
     def extract_from_text(self, text: str) -> str:
-        response = self.text_llm.invoke([HumanMessage(content=self.prompt + f"Text To Analyze from : {text}")])
+        response = self.text_llm.invoke(
+            [HumanMessage(content=self.prompt + f"Text To Analyze from : {text}")],
+            config={"callbacks": [langfuse_handler]},
+        )
         return response.content
 
     def extract_from_file(self, file_path: str, extra_prompt: Optional[str] = None) -> str:
@@ -71,10 +76,12 @@ class ExtractionAgent:
 
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        task_prompt = extra_prompt  or  "Extract key travel information (dates, destinations, travelers, etc.) from this file."
+        task_prompt = (
+            extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
+        )
         full_prompt = f"{self.prompt}\n\n{task_prompt}"
         # Timeout
-        start_time = time.time() 
+        start_time = time.time()
 
         uploaded_file = self.multimodal_client.files.upload(file=file_path)
         while True:
@@ -86,28 +93,26 @@ class ExtractionAgent:
                 raise RuntimeError("File processing failed.")
             curr_time = time.time()
             diff_time = curr_time - start_time
-            if diff_time > 60:
-                raise HTTPException(status_code=502,detail="Timed out while trying to upload the file.")
+            if diff_time > 180:
+                raise HTTPException(status_code=502, detail="Timed out while trying to upload the file.")
             time.sleep(2)
         response = self.multimodal_client.models.generate_content(
-            model=settings.EXTRACTION_MODEL,
-            contents=[uploaded_file, full_prompt]
+            model=settings.EXTRACTION_MODEL, contents=[uploaded_file, full_prompt]
         )
-        return  (response.text,uploaded_file)
+        return (response.text, uploaded_file)
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
-        
+
         raw_input: Optional[str] = state.get("raw_input")
         file_path: Optional[str] = state.get("input_file_path")
 
         if file_path:
-            extracted_text ,uploaded_file= self.extract_from_file(file_path,state.get("validation_prompt"))
+            extracted_text, uploaded_file = self.extract_from_file(file_path, state.get("validation_prompt"))
         elif raw_input:
             extracted_text = self.extract_from_text(raw_input)
         else:
             extracted_text = "No input provided."
         return {
             "extracted_text": extracted_text,
-            "extraction_complete": True,
-            'input_file': uploaded_file
+            "input_file": uploaded_file,
         }

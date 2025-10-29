@@ -9,8 +9,10 @@ from google import genai
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from langfuse import observe
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 
 
 class EvalAgent:
@@ -24,7 +26,7 @@ class EvalAgent:
         )
 
         # Multimodal client for files
-        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY)
+        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY, debug_config={})
 
         # Core evaluation prompt
         self.prompt = """
@@ -131,20 +133,28 @@ class EvalAgent:
         ```
         """
 
-
-    def evaluate_from_text(self, experience: Dict[str, Any], text: str) -> Dict[str, Any]:
+    def evaluate_from_text(self, state) -> Dict[str, Any]:
+        text = state.get("raw_input", "")
+        experience = state.get("experience", {})
+        session_id = state.get("session_id", "")
         eval_prompt = f"""
         {self.prompt}
 
-        ### 🔹 Original Input
+        ### Original Input
         {text}
 
-        ### 🔹 Extracted Experience
+        ###  Extracted Experience
         {json.dumps(experience, indent=2)}
         """
 
         try:
-            response = self.eval_llm.invoke([HumanMessage(content=eval_prompt)])
+            response = self.eval_llm.invoke(
+                [HumanMessage(content=eval_prompt)],
+                config={
+                    "callbacks": [langfuse_handler],
+                    "langfuse_session_id": session_id,
+                },
+            )
             content = response.content.strip()
             if content.startswith("```json"):
                 content = content.replace("```json", "").replace("```", "").strip()
@@ -152,9 +162,10 @@ class EvalAgent:
         except Exception as e:
             return self._error_fallback(str(e))
 
-
-    def evaluate_from_file(self, state,experience: Dict[str, Any], file_path: str) -> Dict[str, Any]:
+    def evaluate_from_file(self, state) -> Dict[str, Any]:
         """Uploads and evaluates all input files along with the extracted experience."""
+        experience = state.get("experience", {})
+        file_path = state.get("input_file_path")
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -173,7 +184,7 @@ class EvalAgent:
                 break
             elif current_file.state == "FAILED":
                 raise RuntimeError("File processing failed.")
-            elif time.time() - start_time > 20:
+            elif time.time() - start_time > 180:
                 raise HTTPException(status_code=502, detail="Timed out while trying to upload the file.")
             time.sleep(2)
 
@@ -188,16 +199,16 @@ class EvalAgent:
         # Send file + prompt to model
         try:
             response = self.multimodal_client.models.generate_content(
-                model=settings.LLM_MODEL,
+                model=settings.EVALUATION_MODEL,
                 contents=[uploaded_file, eval_prompt],
             )
+            # response = self.
             content = response.text.strip()
             if content.startswith("```json"):
                 content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception as e:
             return self._error_fallback(str(e))
-
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         """Main entrypoint for evaluation."""
@@ -210,9 +221,9 @@ class EvalAgent:
 
         try:
             if file_path:
-                evaluation = self.evaluate_from_file(state,experience, file_path)
+                evaluation = self.evaluate_from_file(state)
             elif raw_input:
-                evaluation = self.evaluate_from_text(experience, raw_input)
+                evaluation = self.evaluate_from_text(state)
             else:
                 evaluation = {"error": "No input provided for evaluation"}
         except Exception as e:

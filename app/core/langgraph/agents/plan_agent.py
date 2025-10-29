@@ -4,7 +4,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.schema.experience import TravelPlan
+
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 import time
+
 
 class PlanAgent:
     """
@@ -14,9 +17,7 @@ class PlanAgent:
 
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.PLAN_ITINERARY_MODEL,
-            temperature=0.4,
-            google_api_key=settings.LLM_API_KEY
+            model=settings.PLAN_ITINERARY_MODEL, temperature=0.4, google_api_key=settings.LLM_API_KEY
         )
 
         self.prompt = """
@@ -74,22 +75,22 @@ class PlanAgent:
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
-
+        session_id = state.get("session_id", "")
         if not extracted_text:
-            return {
-                "next": "extraction"
-            }
+            return {"next": "extraction"}
 
         llm_structured = self.llm.with_structured_output(TravelPlan)
         start = time.time()
         response = llm_structured.invoke(
             [
                 HumanMessage(self.prompt.format(text=extracted_text)),
-            ]
+            ],
+            config={
+                "callbacks": [langfuse_handler],
+                "langfuse_session_id": session_id,
+            },
         )
         duration = time.time() - start
         print(f"[Timing] PlanAgent LLM call finished in {duration:.2f} seconds.")
         print("Returning from plan_agent")
-        return {
-            "travel_plan": response
-        }
+        return {"travel_plan": response}

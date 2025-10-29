@@ -8,6 +8,7 @@ from regex import E
 from app.core.langgraph.schema.experience import BasicInfo, Experience, ExperienceTagsOutputScehma, TravelPlan,Eval
 
 class TravelAgentState(TypedDict):
+    session_id : str
     input_text: str
     input_file_path: list[dict[str, Any]]  # [{type: 'pdf/image/audio/video', path: '...', content: '...'}]
     

@@ -11,6 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 
 class ClassificationAgent:
     """Classifies itinerary as Managed or Unmanaged"""
@@ -31,7 +32,7 @@ class ClassificationAgent:
             google_api_key=settings.LLM_API_KEY,
         )
     
-    def classify(self, extracted_text: str) -> Dict[str, Any]:
+    def classify(self, extracted_text: str,session_id :str) -> Dict[str, Any]:
         """Classify itinerary based on completeness"""
         prompt = f"""Analyze the following travel information and classify it as either: 
         - MANAGED: Contains at least one of the following elements: cancellation policy, contact info, inclusions/exclusions, services, payment terms, or pricing.
@@ -56,7 +57,13 @@ class ClassificationAgent:
         "classification_confidence": 0.88
         }}"""
         start = time.time()
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = self.llm.invoke(
+            [HumanMessage(content=prompt)],
+            config={
+                "callbacks":[langfuse_handler],
+                "langfuse_session_id" : session_id,
+            }
+        )
         duration = time.time() - start
         print(f"[Timing] ClassificationAgent LLM call finished in {duration:.2f} seconds.")
         try:
@@ -76,9 +83,9 @@ class ClassificationAgent:
         
         
         extracted_text = state.get("extracted_text", "")
-        
+        session_id = state.get("session_id","") 
         # Classify the itinerary
-        classification_result = self.classify(extracted_text)
+        classification_result = self.classify(extracted_text,session_id)
         
         classification_type = classification_result.get("type", "unmanaged")
         reason = classification_result.get("Explanation", "")

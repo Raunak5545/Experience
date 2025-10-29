@@ -46,7 +46,7 @@ from app.core.config import (
 from app.core.langgraph.tools import tools
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
-from app.core.prompts import SYSTEM_PROMPT
+from app.core.prompts import load_system_prompt
 from app.schemas import (
     GraphState,
     Message,
@@ -56,6 +56,7 @@ from app.utils import (
     prepare_messages,
 )
 
+SYSTEM_PROMPT = load_system_prompt()
 
 class LangGraphAgent:
     """Manages the LangGraph Agent/workflow and interactions with the LLM.

@@ -1,5 +1,6 @@
 from langchain_core.tools import tool
 from app.core.langgraph.data.experience_taxonomy import TAXONOMY
+from toon import encode
 
 
 @tool
@@ -24,7 +25,7 @@ def get_full_experience_taxonomy() -> dict:
 
     if isinstance(TAXONOMY, dict):
         print(f"[get_full_experience_taxonomy] Returning taxonomy with {len(TAXONOMY)} top-level categories")
-        return TAXONOMY
+        return encode(TAXONOMY)
 
     print("[get_full_experience_taxonomy] TAXONOMY is not a dict")
     return {}

@@ -57,7 +57,10 @@ class ExtractionAgent:
         full_prompt = load_prompt("extraction.md", {"extra_instructions": task_prompt})
         is_url = state.get("is_url")
         if is_url:
-            content = prepare_content_message(full_prompt, file_input, is_url=True)
+            content = prepare_content_message(
+                full_prompt,
+                file_input,
+            )
             response = self.text_llm.invoke(
                 [HumanMessage(content=content)],
                 config={

@@ -5,6 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from  app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.prompts import load_prompt
 
 
 
@@ -38,6 +39,7 @@ class ValidationAgent:
         "prompt": ""
         }}
         """
+        prompt = load_prompt("validation.md", {"extracted_text": extracted_text})
         response = self.llm.invoke([HumanMessage(content=prompt)], config={"callbacks": [langfuse_handler],
         "metadata": {
             "langfuse_session_id": session_id,

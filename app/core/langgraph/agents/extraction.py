@@ -13,8 +13,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.prompts import load_prompt
 
 class ExtractionAgent:
     """Agent that extracts travel information from text or multimodal input."""
@@ -27,52 +28,14 @@ class ExtractionAgent:
         )
 
         self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY)
-        self.prompt = f"""
-        ## 🧭 Travel Information Extraction Prompt
-        You are an **advanced extraction specialist**.  
-        Your task is to **analyze and extract all travel-related information** from the provided input files — which may include **images, videos, PDFs, audio, or raw text**.
-
-        ### 🧩 Input Types
-        - **Image:** Describe in detail everything visible — locations, landmarks, dates, signs, activities, and contextual text.
-        - **Video:** Combine **visual scene descriptions**, **spoken audio transcripts**, and **text appearing in frames** to extract full travel-related context.
-        - **PDF / Documents:** Extract both **text content** and **embedded visual/structural clues** (tables, receipts, itineraries, maps, etc.).
-        - **Raw Text:** Parse and interpret natural language information, even if unstructured.
-
-        ---
-
-        ### 🕵️‍♂️ Your Objective
-        Provide a **comprehensive, structured narrative summary** covering *all relevant travel information* present in the files.
-
-        Focus especially on:
-        1. **Destinations / Cities** — Mention every identifiable place or location.
-        2. **Activities and Experiences** — Include sightseeing, adventure, relaxation, events, etc.
-        3. **Budget and Pricing** — Include any cost-related details like package price, hotel cost, activity pricing, or transportation fares.
-
-        If available, also include any **additional contextual travel details** (dates, accommodation, travelers, preferences, etc.) found within the data.
-
-        ---
-
-        ### 🧠 Output Format
-        Return your findings as a **clear, detailed narrative**, not in a list or category table.
-
-        ---
-
-        ### ⚙️ Instructions
-        - Combine and cross-verify information across all input files.  
-        - Include **every relevant piece of travel-related data** — even if implied or mentioned briefly.  
-        - If any file lacks explicit details, infer them logically based on surrounding context.  
-        - Maintain accuracy, fluency, and completeness.
-        ---
-
-        **Return only the final structured narrative — no headings, bullet points, or notes.**
-        """
+        # Load extraction prompt template
+        self.prompt = load_prompt("extraction.md", {"extra_instructions": ""})
 
     def extract_from_text(self, text: str) -> str:
-        response = self.text_llm.invoke(
-            [HumanMessage(content=self.prompt + f"Text To Analyze from : {text}")],
-            config={"callbacks": [langfuse_handler]},
-        )
+        prompt = self.prompt + f"\n\n{text}"
+        response = self.text_llm.invoke([HumanMessage(content=prompt)])
         return response.content
+  
 
     def extract_from_input(
         self,
@@ -89,10 +52,8 @@ class ExtractionAgent:
         """
         from app.utils.file_handler import prepare_content_message
 
-        task_prompt = (
-            extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
-        )
-        full_prompt = f"{self.prompt}\n\n{task_prompt}"
+        task_prompt = extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
+        full_prompt = load_prompt("extraction.md", {"extra_instructions": task_prompt})
         is_url = state.get("is_url")
         if is_url:
             content = prepare_content_message(full_prompt, file_input, is_url=True)
@@ -109,6 +70,11 @@ class ExtractionAgent:
         # For file uploads
         if not os.path.exists(file_input):
             raise FileNotFoundError(f"File not found: {file_input}")
+
+    def extract_from_file(self, file_path: str, extra_prompt: Optional[str] = None) -> str:
+        if not os.path.exists(file_path):
+
+            raise FileNotFoundError(f"File not found: {file_path}")
 
         # Timeout
         start_time = time.time()
@@ -141,6 +107,7 @@ class ExtractionAgent:
                 file_path,
                 state.get("validation_prompt"),
             )
+
         elif raw_input:
             extracted_text = self.extract_from_text(raw_input)
         else:

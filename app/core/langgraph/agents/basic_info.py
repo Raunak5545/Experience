@@ -1,17 +1,25 @@
-from typing import Any, Dict
+import time
+from typing import (
+    Any,
+    Dict,
+)
+
 from click import prompt
 from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
+
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-from app.core.langgraph.schema.experience import BasicInfo, ExperienceTagsOutputScehma
-from langchain_core.tools import tool
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.langgraph.data.experience_taxonomy import TAXONOMY
+from app.core.langgraph.schema.experience import (
+    BasicInfo,
+    ExperienceTagsOutputScehma,
+)
 from app.core.langgraph.tools.experience_types_tags import get_full_experience_taxonomy
 from app.core.prompts import load_prompt
-import time
-from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 
 
 class BasicInfoAgent:
@@ -23,7 +31,6 @@ class BasicInfoAgent:
         self.llm = ChatGoogleGenerativeAI(
             model=settings.BASIC_INFO_MODEL, temperature=0.4, google_api_key=settings.LLM_API_KEY
         )
-        
 
         self.tools = [get_full_experience_taxonomy]
 
@@ -32,15 +39,11 @@ class BasicInfoAgent:
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
-        if not extracted_text:
-            return {"next": "extraction"}
-
         llm_structured = self.llm.with_structured_output(BasicInfo)
         start = time.time()
-        response = llm_structured.invoke([
-            HumanMessage(load_prompt("basic_info.md", {"extracted_text": extracted_text}))
-        ],
-                      config={
+        response = llm_structured.invoke(
+            [HumanMessage(load_prompt("basic_info.md", {"extracted_text": extracted_text}))],
+            config={
                 "callbacks": [langfuse_handler],
                 "langfuse_session_id": session_id,
             },
@@ -54,21 +57,18 @@ class BasicInfoAgent:
     def extract_tags(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
-        if not extracted_text:
-            return {"next": "extraction"}
         start = time.time()
         # First invocation - let agent use tools
-        result = self.agent_executor.invoke({
-                            "messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]
-                        },
-                        config={
-                            "max_iterations": 1,   # single reasoning step
-                            "timeout": 60,
-                            "stream": False,
-                           "callbacks": [langfuse_handler],
+        result = self.agent_executor.invoke(
+            {"messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]},
+            config={
+                "max_iterations": 1,  # single reasoning step
+                "timeout": 60,
+                "stream": False,
+                "callbacks": [langfuse_handler],
                 "langfuse_session_id": session_id,
-                        }
-                    )       
+            },
+        )
         print("Agent result messages:")
         for msg in result["messages"]:
             print(f"Type: {type(msg).__name__}, Content: {msg.content[:200] if msg.content else 'EMPTY'}")
@@ -83,11 +83,9 @@ class BasicInfoAgent:
         ):
             print("Final message empty, requesting JSON output...")
             result = self.agent_executor.invoke(
-                {
-                    "messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]
-                },
+                {"messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]},
                 config={
-                    "max_iterations": 1,   
+                    "max_iterations": 1,
                     "timeout": 60,
                     "stream": False,
                     "callbacks": [langfuse_handler],

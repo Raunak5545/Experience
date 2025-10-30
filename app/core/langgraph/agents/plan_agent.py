@@ -30,8 +30,6 @@ class PlanAgent:
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
-        if not extracted_text:
-            return {"next": "extraction"}
 
         llm_structured = self.llm.with_structured_output(TravelPlan)
         start = time.time()

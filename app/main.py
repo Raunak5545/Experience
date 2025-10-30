@@ -1,5 +1,5 @@
 """This file contains the main application entry point."""
-
+ 
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -21,6 +21,7 @@ from langfuse import Langfuse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -32,6 +33,7 @@ from app.services.database import database_service
 # Load environment variables
 load_dotenv()
 
+GoogleGenAIInstrumentor().instrument()
 # Initialize Langfuse
 langfuse = Langfuse(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),

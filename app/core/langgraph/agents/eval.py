@@ -1,16 +1,22 @@
 import json
 import os
 import time
-from typing import Any, Dict, Optional
-from app.core.logging import logger
+from typing import (
+    Any,
+    Dict,
+    Optional,
+)
 
 from fastapi import HTTPException
 from google import genai
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langfuse import observe
 
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.logging import logger
 from app.core.prompts import load_prompt
 
 
@@ -25,14 +31,22 @@ class EvalAgent:
         )
 
         # Multimodal client for files
-        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY)
+        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY, debug_config={})
 
-
-    def evaluate_from_text(self, experience: Dict[str, Any], text: str) -> Dict[str, Any]:
+    def evaluate_from_text(self, state) -> Dict[str, Any]:
         eval_prompt = load_prompt("eval.md", {"text": text, "experience": json.dumps(experience, indent=2)})
+        text = state.get("text", "")
+        experience = state.get("experience", {})
+        session_id = state.get("session_id", "")
 
         try:
-            response = self.eval_llm.invoke([HumanMessage(content=eval_prompt)])
+            response = self.eval_llm.invoke(
+                [HumanMessage(content=eval_prompt)],
+                config={
+                    "callbacks": [langfuse_handler],
+                    "langfuse_session_id": session_id,
+                },
+            )
             content = response.content.strip()
             if content.startswith("```json"):
                 content = content.replace("```json", "").replace("```", "").strip()
@@ -40,18 +54,43 @@ class EvalAgent:
         except Exception as e:
             return self._error_fallback(str(e))
 
+    def evaluate_input(self, state) -> Dict[str, Any]:
+        """Evaluates input files or URLs along with the extracted experience."""
+        from app.utils.file_handler import prepare_content_message
 
-    def evaluate_from_file(self, state,experience: Dict[str, Any], file_path: str) -> Dict[str, Any]:
-        """Uploads and evaluates all input files along with the extracted experience."""
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        experience = state.get("experience", {})
+        file_input = state.get("input_file_path")
+        is_url = state.get("is_url", False)
+        session_id = state.get("session_id", "")
+
+        eval_prompt = load_prompt("eval.md", {"text": "", "experience": json.dumps(experience, indent=2)})
+        if is_url:
+            try:
+                content = prepare_content_message(eval_prompt, file_input, is_url=True)
+                response = self.eval_llm.invoke(
+                    [HumanMessage(content=content)],
+                    config={
+                        "callbacks": [langfuse_handler],
+                        "langfuse_session_id": session_id,
+                    },
+                )
+                content = response.content.strip()
+                if content.startswith("```json"):
+                    content = content.replace("```json", "").replace("```", "").strip()
+                return json.loads(content)
+            except Exception as e:
+                return self._error_fallback(str(e))
+
+        # For file uploads
+        if not os.path.exists(file_input):
+            raise FileNotFoundError(f"File not found: {file_input}")
 
         # Upload file to Google GenAI
         uploaded_file = state.get("input_file")
         if not uploaded_file:
-            logger.info("Couldnot find uploaded_file uploading a new file")
-            print("Couldnot find uploaded_file uploading a new file")
-            uploaded_file = self.multimodal_client.files.upload(file=file_path)
+            logger.info("Could not find uploaded_file uploading a new file")
+            print("Could not find uploaded_file uploading a new file")
+            uploaded_file = self.multimodal_client.files.upload(file=file_input)
 
         # Wait until ACTIVE or timeout
         start_time = time.time()
@@ -61,7 +100,7 @@ class EvalAgent:
                 break
             elif current_file.state == "FAILED":
                 raise RuntimeError("File processing failed.")
-            elif time.time() - start_time > 20:
+            elif time.time() - start_time > 180:
                 raise HTTPException(status_code=502, detail="Timed out while trying to upload the file.")
             time.sleep(2)
 
@@ -70,16 +109,16 @@ class EvalAgent:
         # Send file + prompt to model
         try:
             response = self.multimodal_client.models.generate_content(
-                model=settings.LLM_MODEL,
+                model=settings.EVALUATION_MODEL,
                 contents=[uploaded_file, eval_prompt],
             )
+            # response = self.
             content = response.text.strip()
             if content.startswith("```json"):
                 content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception as e:
             return self._error_fallback(str(e))
-
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         """Main entrypoint for evaluation."""
@@ -92,9 +131,9 @@ class EvalAgent:
 
         try:
             if file_path:
-                evaluation = self.evaluate_from_file(state,experience, file_path)
+                evaluation = self.evaluate_input(state)
             elif raw_input:
-                evaluation = self.evaluate_from_text(experience, raw_input)
+                evaluation = self.evaluate_from_text(state)
             else:
                 evaluation = {"error": "No input provided for evaluation"}
         except Exception as e:

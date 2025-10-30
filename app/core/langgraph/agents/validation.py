@@ -4,7 +4,9 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
+from  app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.prompts import load_prompt
+
 
 
 class ValidationAgent:
@@ -19,9 +21,29 @@ class ValidationAgent:
             google_api_key=settings.LLM_API_KEY 
         )
     
-    def check_completeness(self, extracted_text: str) -> Dict[str, Any]:
+    def check_completeness(self, extracted_text: str,session_id:str) -> Dict[str, Any]:
+        prompt = f"""Analyze the following travel information and determine if it contains:
+        1. Destination or City (specific location)
+        2. Activities or Attractions
+
+        Prompt user and ask for missing information if any of the above are absent.
+
+        **Return validated if we have everything that we need**
+        Extracted Information:
+
+        {extracted_text}
+
+        Respond in JSON format:
+        {{
+        "validated": false,
+        "prompt": ""
+        }}
+        """
         prompt = load_prompt("validation.md", {"extracted_text": extracted_text})
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        response = self.llm.invoke([HumanMessage(content=prompt)], config={"callbacks": [langfuse_handler],
+        "metadata": {
+            "langfuse_session_id": session_id,
+         }})
         
         try:
             result = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
@@ -38,7 +60,7 @@ class ValidationAgent:
         
         extracted_text = state.get("extracted_text", "")
         validation_attempts = state.get("validation_attempts", 0)
-        validation_result = self.check_completeness(extracted_text)
+        validation_result = self.check_completeness(extracted_text,state.get("session_id"))
         has_destination = validation_result.get("has_destination", [])
         is_validated =  validation_result.get("is_validated",False)
         failed_reason = validation_result.get("failed_reason","")

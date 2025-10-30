@@ -1,19 +1,22 @@
 import json
 import os
 import time
-from typing import Any, Dict, Optional
-from app.core.logging import logger
+from typing import (
+    Any,
+    Dict,
+    Optional,
+)
 
 from fastapi import HTTPException
 from google import genai
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-
 from langfuse import observe
+
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.logging import logger
 from app.core.prompts import load_prompt
 
 
@@ -30,10 +33,11 @@ class EvalAgent:
         # Multimodal client for files
         self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY, debug_config={})
 
-
-    def evaluate_from_text(self, experience: Dict[str, Any], text: str) -> Dict[str, Any]:
+    def evaluate_from_text(self, state) -> Dict[str, Any]:
         eval_prompt = load_prompt("eval.md", {"text": text, "experience": json.dumps(experience, indent=2)})
-
+        text = state.get("text", "")
+        experience = state.get("experience", {})
+        session_id = state.get("session_id", "")
 
         try:
             response = self.eval_llm.invoke(
@@ -59,13 +63,7 @@ class EvalAgent:
         is_url = state.get("is_url", False)
         session_id = state.get("session_id", "")
 
-        eval_prompt = f"""
-        {self.prompt}
-
-        ### 🔹 Extracted Experience (Final Output)
-        {json.dumps(experience, indent=2)}
-        """
-
+        eval_prompt = load_prompt("eval.md", {"text": "", "experience": json.dumps(experience, indent=2)})
         if is_url:
             try:
                 content = prepare_content_message(eval_prompt, file_input, is_url=True)

@@ -1,50 +1,45 @@
-You are an expert at structuring unorganized travel content into a detailed day-by-day itinerary JSON.
-Convert the given text into a valid JSON that matches the structure shown below—no markdown, no commentary, only valid JSON.
-Each day's plan should have a clear 'caption', 'description', and a 'schedule' of activities.
+You are an expert at extracting ONLY what is explicitly stated in the input text and structuring it into a day-by-day itinerary JSON.
 
-Use the input text to populate fields intelligently:
-- Infer missing but obvious details from context.
-- Use arrays for multi-line descriptions.
-- Keep empty strings or arrays for missing data.
-- All times should be approximate (Morning, Afternoon, Evening, Night) if not explicitly mentioned.
-- For duration, estimate if not mentioned (e.g., walking tour ~3.5 hrs).
-- Keep JSON strictly valid and complete.
+RULES TO PREVENT HALLUCINATION:
+- ONLY include information that is DIRECTLY and EXPLICITLY stated in the input text.
+- NEVER estimate, approximate, or infer durations, times, locations, or activity names.
+- If a time is not explicitly mentioned (e.g., "10 AM"), use only: "Morning", "Afternoon", "Evening", or "Night" — and ONLY if the input clearly implies it (e.g., "after breakfast" → "Morning").
+- If duration is not stated, use null — NEVER estimate (e.g., ~3.5 hrs).
+- If an activity name or place is not named, use the exact phrase from text or leave as empty string.
+- Do NOT add, rephrase, or summarize beyond what is written.
+- If no days or schedule exist in text, return empty "plan": [].
 
 Input text: {extracted_text}
 
-Output JSON structure:
+Output ONLY valid JSON matching the exact structure below — no markdown, no commentary.
+
 {{
   "plan": [
     {{
       "day": "1",
-      "caption": "Short engaging title summarizing the day's experience.",
+      "caption": "Exact short phrase from text summarizing the day, or empty string if none.",
       "description": [
-        "Sentence 1 describing the day.",
-        "Sentence 2 describing highlights."
+        "Exact sentence from text.",
+        "Another exact sentence."
       ],
       "schedule": [
         {{
-          "time": "",
-          "timeline": "",
+          "time": "Morning|Afternoon|Evening|Night or empty",
+          "timeline": "Exact time if stated (e.g., 9:00 AM), else empty",
           "description": [
-            "Sentence 1 describing morning activity.",
-            "Sentence 2 elaborating details."
+            "Exact sentence from text about this activity."
           ],
           "type": {{
-            "name": "activity",
+            "name": "activity|travel|meal|rest",
             "value": {{
-              "name": "Activity name (e.g., Heritage Walk)",
-              "duration in hours": 3.5
+              "name": "Exact activity name from text or empty",
+              "duration in hours": null
             }},
-            "placename": "Location or area name"
+            "placename": "Exact location name from text or empty"
           }},
-          "caption": "Short catchy summary for this activity"
+          "caption": "Exact short phrase from text or empty"
         }}
-        Add more schedule items as needed
       ]
     }}
-    Add more days as needed
   ]
 }}
-
-Ensure your final output is valid JSON and matches the schema exactly.

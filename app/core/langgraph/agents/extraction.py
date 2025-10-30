@@ -13,9 +13,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.prompts import load_prompt
+
 
 class ExtractionAgent:
     """Agent that extracts travel information from text or multimodal input."""
@@ -35,7 +35,6 @@ class ExtractionAgent:
         prompt = self.prompt + f"\n\n{text}"
         response = self.text_llm.invoke([HumanMessage(content=prompt)])
         return response.content
-  
 
     def extract_from_input(
         self,
@@ -52,7 +51,9 @@ class ExtractionAgent:
         """
         from app.utils.file_handler import prepare_content_message
 
-        task_prompt = extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
+        task_prompt = (
+            extra_prompt or "Extract key travel information (dates, destinations, travelers, etc.) from this file."
+        )
         full_prompt = load_prompt("extraction.md", {"extra_instructions": task_prompt})
         is_url = state.get("is_url")
         if is_url:
@@ -71,12 +72,6 @@ class ExtractionAgent:
         if not os.path.exists(file_input):
             raise FileNotFoundError(f"File not found: {file_input}")
 
-    def extract_from_file(self, file_path: str, extra_prompt: Optional[str] = None) -> str:
-        if not os.path.exists(file_path):
-
-            raise FileNotFoundError(f"File not found: {file_path}")
-
-        # Timeout
         start_time = time.time()
         uploaded_file = self.multimodal_client.files.upload(file=file_input)
         while True:

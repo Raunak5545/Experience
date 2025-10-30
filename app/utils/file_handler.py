@@ -1,58 +1,65 @@
-import mimetypes
-import os
-from typing import Dict, Tuple, Union, Any
+from typing import (
+    Tuple,
+    Union,
+)
+
 import requests
 from fastapi import HTTPException
 
-def get_content_type(file_input: str, is_url: bool = False) -> Tuple[str, str]:
+
+def get_content_type(file_url: str) -> Tuple[str, str]:
     """
-    Detect the content type of a file or URL.
-    Returns tuple of (main_type, sub_type)
+    Detect the content type of a remote file (URL).
+    Returns a tuple of (main_type, sub_type)
     """
-    if is_url:
-        try:
-            response = requests.head(file_input)
-            content_type = response.headers.get('content-type', 'application/octet-stream')
-            main_type, sub_type = content_type.split('/')
-            return main_type, sub_type
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
-    else:
-        # For local files
-        content_type, _ = mimetypes.guess_type(file_input)
-        if content_type is None:
-            return "application", "octet-stream"
-        main_type, sub_type = content_type.split('/')
+    try:
+        response = requests.head(file_url, allow_redirects=True, timeout=5)
+
+        # Handle non-success status codes (e.g., 403 Forbidden, 404 Not Found)
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=response.status_code, detail=f"Failed to access URL ({response.status_code}): {file_url}"
+            )
+
+        # Get content type
+        content_type = response.headers.get("content-type", "application/octet-stream")
+
+        # Ensure it’s valid
+        if "/" not in content_type:
+            raise HTTPException(status_code=400, detail=f"Invalid content-type: {content_type}")
+
+        main_type, sub_type = content_type.split("/", 1)
         return main_type, sub_type
 
-def prepare_content_message(content: str, file_input: str, is_url: bool = False) -> Union[str, list]:
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=408, detail=f"Request timed out while accessing URL: {file_url}")
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail=f"Network error while accessing URL: {file_url}")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Error fetching URL: {str(e)}")
+
+
+def prepare_content_message(content: str, file_url: str) -> Union[str, list]:
     """
-    Prepare the content message for the LLM based on file type.
+    Prepare the content message for the LLM based on file type (URL only).
     Returns either a string for text content or a list for multimodal content.
     """
-    main_type, sub_type = get_content_type(file_input, is_url)
-    
+    main_type, sub_type = get_content_type(file_url)
+
     if main_type == "text":
         return content
     elif main_type == "image":
-        return [
-            {"type": "text", "text": content},
-            {"type": "image_url" if is_url else "image", "image_url" if is_url else "image": file_input}
-        ]
+        return [{"type": "text", "text": content}, {"type": "image_url", "image_url": file_url}]
     elif main_type == "video":
-        return [
-            {"type": "text", "text": content},
-            {"type": "video_url" if is_url else "video", "video_url" if is_url else "video": file_input}
-        ]
+        return [{"type": "text", "text": content}, {"type": "video_url", "video_url": file_url}]
     elif main_type == "audio":
-        return [
-            {"type": "text", "text": content},
-            {"type": "audio_url" if is_url else "audio", "audio_url" if is_url else "audio": file_input}
-        ]
-    elif main_type == "application" and sub_type in ["pdf", "msword", "vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-        return [
-            {"type": "text", "text": content},
-            {"type": "document_url" if is_url else "document", "document_url" if is_url else "document": file_input}
-        ]
+        return [{"type": "text", "text": content}, {"type": "audio_url", "audio_url": file_url}]
+    elif main_type == "application" and sub_type in [
+        "pdf",
+        "msword",
+        "vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]:
+        return [{"type": "text", "text": content}, {"type": "document_url", "document_url": file_url}]
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {main_type}/{sub_type}")
+

@@ -66,7 +66,7 @@ class EvalAgent:
         eval_prompt = load_prompt("eval.md", {"text": "", "experience": json.dumps(experience, indent=2)})
         if is_url:
             try:
-                content = prepare_content_message(eval_prompt, file_input, is_url=True)
+                content = prepare_content_message(eval_prompt, file_input)
                 response = self.eval_llm.invoke(
                     [HumanMessage(content=content)],
                     config={

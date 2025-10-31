@@ -19,6 +19,7 @@ from app.core.langgraph.schema.experience import (
     ExperienceTagsOutputScehma,
 )
 from app.core.langgraph.tools.experience_types_tags import get_full_experience_taxonomy
+from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
 
 
@@ -28,12 +29,17 @@ class BasicInfoAgent:
     """
 
     def __init__(self):
+        # Get the model configuration for this node
+        model_config = workflow_config.get_config("basic_info")
+        
+        # Initialize LLM with the configuration
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.BASIC_INFO_MODEL, temperature=0.4, google_api_key=settings.LLM_API_KEY
+            model=model_config.model_name,
+            google_api_key=settings.LLM_API_KEY,
+            **model_config.to_dict()
         )
 
         self.tools = [get_full_experience_taxonomy]
-
         self.agent_executor = create_react_agent(self.llm, self.tools)
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:

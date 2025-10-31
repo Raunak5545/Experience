@@ -160,7 +160,7 @@ class Settings:
         self.PLAN_ITINERARY_MODEL = os.getenv("PLAN_ITINERARY_MODEL", self.LLM_MODEL)
         self.EVALUATION_MODEL = os.getenv("EVALUATION_MODEL", self.LLM_MODEL)
 
-        self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
+        self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "6000"))
         self.MAX_LLM_CALL_RETRIES = int(os.getenv("MAX_LLM_CALL_RETRIES", "3"))
 
         # JWT Configuration

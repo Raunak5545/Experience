@@ -49,7 +49,7 @@ Your goal is to produce an accurate, structured JSON representation of the given
     - **Zero tolerance for fabrication**: If no evidence exists for a field, use an empty array `[]` instead of guessing.
     - **Confidence logging (internal only)**: Before final JSON, note `[Confidence: High/Medium/Low]` for each array based on evidence strength.
     - **Image input rule**: If input is an image, **only use visually identifiable objects/actions**. Ignore assumptions (e.g., a boat with peopl"bird watching" unless birds are visible and focused).
-
+    - **EXPLICITLY MENTIONED**: If things arent explicitly mentioned or directly implied donot include those in the answer.
 ### CRITICAL: FINAL OUTPUT REQUIREMENT
    After using `get_full_experience_taxonomy`, respond with **ONLY** a valid JSON object (no markdown, no explanation, no code blocks).
 

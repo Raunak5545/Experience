@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import traceback
 from typing import (
     Any,
     Dict,
@@ -16,6 +17,7 @@ from langfuse import observe
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.langgraph.config.model_config import workflow_config
 from app.core.logging import logger
 from app.core.prompts import load_prompt
 
@@ -24,14 +26,18 @@ class EvalAgent:
     """Agent that evaluates extracted travel information against the raw input for quality and compliance."""
 
     def __init__(self):
+        # Get the model configuration for this node
+        model_config = workflow_config.get_config("evaluation")
+
+        # Initialize LLM with the configuration
         self.eval_llm = ChatGoogleGenerativeAI(
-            model=settings.LLM_MODEL,
-            temperature=0.2,
-            google_api_key=settings.LLM_API_KEY,
+            model=model_config.model_name, google_api_key=settings.LLM_API_KEY, **model_config.to_dict()
         )
 
-        # Multimodal client for files
-        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY, debug_config={})
+        # Initialize multimodal client with configuration
+        self.multimodal_client = genai.Client(
+            api_key=settings.LLM_API_KEY, **(model_config.multimodal.to_dict() if model_config.multimodal else {})
+        )
 
     def evaluate_from_text(self, state) -> Dict[str, Any]:
         eval_prompt = load_prompt("eval.md", {"text": text, "experience": json.dumps(experience, indent=2)})
@@ -74,11 +80,14 @@ class EvalAgent:
                         "langfuse_session_id": session_id,
                     },
                 )
+                print(response)
                 content = response.content.strip()
                 if content.startswith("```json"):
                     content = content.replace("```json", "").replace("```", "").strip()
                 return json.loads(content)
             except Exception as e:
+                print(e)
+                traceback.print_exc()
                 return self._error_fallback(str(e))
 
         # For file uploads
@@ -118,11 +127,14 @@ class EvalAgent:
                 content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception as e:
+            print(e)
+            traceback.print_exc()
             return self._error_fallback(str(e))
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         """Main entrypoint for evaluation."""
         experience = state.get("experience", {})
+        logger.info(experience)
         raw_input: Optional[str] = state.get("raw_input")
         file_path: Optional[str] = state.get("input_file_path")
 

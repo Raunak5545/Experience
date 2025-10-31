@@ -14,6 +14,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
 
 
@@ -21,13 +22,21 @@ class ExtractionAgent:
     """Agent that extracts travel information from text or multimodal input."""
 
     def __init__(self):
+        # Get the model configuration for this node
+        model_config = workflow_config.get_config("extraction")
+        
+        # Initialize LLM with the configuration
         self.text_llm = ChatGoogleGenerativeAI(
-            model=settings.EXTRACTION_MODEL,
-            temperature=0.3,
+            model=model_config.model_name,
             google_api_key=settings.LLM_API_KEY,
+            **model_config.to_dict()
         )
 
-        self.multimodal_client = genai.Client(api_key=settings.LLM_API_KEY)
+        # Initialize multimodal client with configuration
+        self.multimodal_client = genai.Client(
+            api_key=settings.LLM_API_KEY,
+            **(model_config.multimodal.to_dict() if model_config.multimodal else {})
+        )
         # Load extraction prompt template
         self.prompt = load_prompt("extraction.md", {"extra_instructions": ""})
 

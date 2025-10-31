@@ -17,6 +17,7 @@
         **Proportion of fabricated/unsupported info**.
         - **Fabricated** = Any JSON detail **NOT explicitly present** in files (e.g., invented flight number, wrong price).
         - **Unsupported** = Inferred/guessed without direct evidence.
+        - **Implied** = For information like tags/types/categories provide some form of flexibility.
         
         **Calculation Steps**:
         1. List **all atomic facts** in JSON (e.g., 20 facts).

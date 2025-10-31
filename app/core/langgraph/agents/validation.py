@@ -4,7 +4,8 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 from app.core.langgraph.agents.globalstate import TravelAgentState
-from  app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
 
 
@@ -15,10 +16,14 @@ class ValidationAgent:
     MAX_ATTEMPTS = 0
     
     def __init__(self):
+        # Get the model configuration for this node
+        model_config = workflow_config.get_config("validation")
+        
+        # Initialize LLM with the configuration
         self.llm = ChatGoogleGenerativeAI(
-            model=settings.VALIDATION_MODEL,
-            temperature=0.2,
-            google_api_key=settings.LLM_API_KEY 
+            model=model_config.model_name,
+            google_api_key=settings.LLM_API_KEY,
+            **model_config.to_dict()
         )
     
     def check_completeness(self, extracted_text: str,session_id:str) -> Dict[str, Any]:

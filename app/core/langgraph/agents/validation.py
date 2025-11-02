@@ -46,6 +46,7 @@ class ValidationAgent:
         }}
         """
         prompt = load_prompt("validation.md", {"extracted_text": extracted_text})
+        bound_logger = logger.bind(session_id=session_id, node="validation")
         response = self.llm.invoke([HumanMessage(content=prompt)], config={"callbacks": [langfuse_handler],
         "metadata": {
             "langfuse_session_id": session_id,
@@ -53,10 +54,10 @@ class ValidationAgent:
         
         try:
             result = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
-            logger.debug("validation_check_completeness_result", session_id=session_id, result=result)
+            bound_logger.debug("validation_check_completeness_result", result=result)
             return result
         except Exception as e:
-            logger.error("validation_parse_error", session_id=session_id, error=str(e))
+            bound_logger.error("validation_parse_error", error=str(e))
             return {
                 "has_destination": False,
                 "failed_reason" : "Error occured",
@@ -69,7 +70,8 @@ class ValidationAgent:
         extracted_text = state.get("extracted_text", "")
         validation_attempts = state.get("validation_attempts", 0)
         session_id = state.get("session_id", "")
-        logger.info("validation_execute_start", session_id=session_id, attempts=validation_attempts)
+        bound_logger = logger.bind(session_id=session_id, node="validation")
+        bound_logger.info("validation_execute_start", attempts=validation_attempts)
         validation_result = self.check_completeness(extracted_text,state.get("session_id"))
         has_destination = validation_result.get("has_destination", [])
         is_validated =  validation_result.get("is_validated",False)
@@ -77,7 +79,7 @@ class ValidationAgent:
         validation_prompt = validation_result.get("validation_prompt","")
          
         if has_destination and is_validated:
-            logger.info("validation_success", session_id=session_id)
+            bound_logger.info("validation_success")
             return {
                 "validated": True,
                 "validation_attempts": validation_attempts + 1,
@@ -90,7 +92,7 @@ class ValidationAgent:
             # Check if we've exceeded max attempts
             if validation_attempts >= self.MAX_ATTEMPTS:
                 if has_destination:
-                    logger.info("validation_success_after_max_attempts", session_id=session_id)
+                    bound_logger.info("validation_success_after_max_attempts")
                     return {
                         "validated": True,
                         "validation_attempts": validation_attempts + 1,
@@ -104,7 +106,7 @@ class ValidationAgent:
                     "validation_prompt": "No Destination",
                     "next": "classification"
                 }
-            logger.info("validation_needs_more_info", session_id=session_id, attempts=validation_attempts + 1)
+            bound_logger.info("validation_needs_more_info", attempts=validation_attempts + 1)
             return {
                 "validated": False,
                 "validation_attempts": validation_attempts + 1,

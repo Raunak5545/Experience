@@ -38,6 +38,7 @@ class PlanAgent:
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
+        bound_logger = logger.bind(session_id=session_id, node="plan")
 
         llm_structured = self.llm.with_structured_output(TravelPlan)
         start = time.time()
@@ -52,6 +53,6 @@ class PlanAgent:
             },
         )
         duration = time.time() - start
-        logger.info("plan_agent_llm_finished", session_id=session_id, duration_s=duration)
-        logger.info("plan_agent_execute_complete", session_id=session_id)
+        bound_logger.info("plan_agent_llm_finished", duration_s=duration)
+        bound_logger.info("plan_agent_execute_complete")
         return {"travel_plan": response}

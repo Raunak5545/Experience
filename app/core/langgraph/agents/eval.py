@@ -20,6 +20,8 @@ from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.langgraph.config.model_config import workflow_config
 from app.core.logging import logger
 from app.core.prompts import load_prompt
+from app.core.langgraph.llm_client import LLMClient
+from app.core.langgraph.output_validator import validate_json, repair_json_with_llm
 
 
 class EvalAgent:
@@ -38,27 +40,31 @@ class EvalAgent:
         self.multimodal_client = genai.Client(
             api_key=settings.LLM_API_KEY, **(model_config.multimodal.to_dict() if model_config.multimodal else {})
         )
+        # Wrap LLMs with the centralized client for retries/logging
+        self.llm_client = LLMClient(llm=self.eval_llm, multimodal_client=self.multimodal_client, name=model_config.model_name)
 
     def evaluate_from_text(self, state) -> Dict[str, Any]:
-        eval_prompt = load_prompt("eval.md", {"text": text, "experience": json.dumps(experience, indent=2)})
         text = state.get("text", "")
         experience = state.get("experience", {})
         session_id = state.get("session_id", "")
 
+        bound_logger = logger.bind(session_id=session_id, node="eval")
+        eval_prompt = load_prompt("eval.md", {"text": text, "experience": json.dumps(experience, indent=2)})
+
         try:
-            response = self.eval_llm.invoke(
-                [HumanMessage(content=eval_prompt)],
-                config={
-                    "callbacks": [langfuse_handler],
-                    "langfuse_session_id": session_id,
-                },
-            )
-            content = response.content.strip()
-            if content.startswith("```json"):
-                content = content.replace("```json", "").replace("```", "").strip()
-            return json.loads(content)
+            resp = self.llm_client.invoke([HumanMessage(content=eval_prompt)], session_id=session_id, callbacks=[langfuse_handler])
+            content = (resp.get("content") or "").strip()
+            parsed = validate_json(content, session_id=session_id)
+            if parsed.get("ok"):
+                return parsed.get("obj")
+            # attempt repair with LLM
+            repair = repair_json_with_llm(self.llm_client, content, session_id=session_id, max_attempts=2)
+            if repair.get("ok"):
+                return repair.get("obj")
+            bound_logger.error("eval_from_text_parse_failure", error=parsed.get("error"))
+            return self._error_fallback("Model returned invalid JSON for evaluation")
         except Exception as e:
-            logger.error("eval_from_text_error", session_id=session_id, error=str(e), exc_info=True)
+            bound_logger.error("eval_from_text_error", error=str(e), exc_info=True)
             return self._error_fallback(str(e))
 
     def evaluate_input(self, state) -> Dict[str, Any]:
@@ -69,24 +75,23 @@ class EvalAgent:
         file_input = state.get("input_file_path")
         is_url = state.get("is_url", False)
         session_id = state.get("session_id", "")
-
+        bound_logger = logger.bind(session_id=session_id, node="eval")
         eval_prompt = load_prompt("eval.md", {"text": "", "experience": json.dumps(experience, indent=2)})
         if is_url:
             try:
                 content = prepare_content_message(eval_prompt, file_input)
-                response = self.eval_llm.invoke(
-                    [HumanMessage(content=content)],
-                    config={
-                        "callbacks": [langfuse_handler],
-                        "langfuse_session_id": session_id,
-                    },
-                )
-                content = response.content.strip()
-                if content.startswith("```json"):
-                    content = content.replace("```json", "").replace("```", "").strip()
-                return json.loads(content)
+                resp = self.llm_client.invoke([HumanMessage(content=content)], session_id=session_id, callbacks=[langfuse_handler])
+                content = (resp.get("content") or "").strip()
+                parsed = validate_json(content, session_id=session_id)
+                if parsed.get("ok"):
+                    return parsed.get("obj")
+                repair = repair_json_with_llm(self.llm_client, content, session_id=session_id, max_attempts=2)
+                if repair.get("ok"):
+                    return repair.get("obj")
+                bound_logger.error("eval_evaluate_input_url_parse_failure", error=parsed.get("error"))
+                return self._error_fallback("Model returned invalid JSON for evaluation of URL input")
             except Exception as e:
-                logger.error("eval_evaluate_input_url_error", session_id=session_id, error=str(e), exc_info=True)
+                bound_logger.error("eval_evaluate_input_url_error", error=str(e), exc_info=True)
                 return self._error_fallback(str(e))
 
         # For file uploads
@@ -96,7 +101,7 @@ class EvalAgent:
         # Upload file to Google GenAI
         uploaded_file = state.get("input_file")
         if not uploaded_file:
-            logger.info("eval_missing_uploaded_file_uploading", session_id=session_id, file_input=file_input)
+            bound_logger.info("eval_missing_uploaded_file_uploading", file_input=file_input)
             uploaded_file = self.multimodal_client.files.upload(file=file_input)
 
         # Wait until ACTIVE or timeout
@@ -115,23 +120,27 @@ class EvalAgent:
 
         # Send file + prompt to model
         try:
-            response = self.multimodal_client.models.generate_content(
-                model=settings.EVALUATION_MODEL,
-                contents=[uploaded_file, eval_prompt],
-            )
-            # response = self.
-            content = response.text.strip()
-            if content.startswith("```json"):
-                content = content.replace("```json", "").replace("```", "").strip()
-            return json.loads(content)
+            # use the LLM wrapper for multimodal generation too
+            resp = self.llm_client.generate_content(uploaded_file, eval_prompt, session_id=session_id, model=settings.EVALUATION_MODEL)
+            content = (resp.get("content") or "").strip()
+            parsed = validate_json(content, session_id=session_id)
+            if parsed.get("ok"):
+                return parsed.get("obj")
+            repair = repair_json_with_llm(self.llm_client, content, session_id=session_id, max_attempts=2)
+            if repair.get("ok"):
+                return repair.get("obj")
+            bound_logger.error("eval_evaluate_input_file_parse_failure", error=parsed.get("error"))
+            return self._error_fallback("Model returned invalid JSON for evaluation of file input")
         except Exception as e:
-            logger.error("eval_evaluate_input_file_error", session_id=session_id, error=str(e), exc_info=True)
+            bound_logger.error("eval_evaluate_input_file_error", error=str(e), exc_info=True)
             return self._error_fallback(str(e))
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         """Main entrypoint for evaluation."""
         experience = state.get("experience", {})
-        logger.info(experience)
+        session_id = state.get("session_id", "")
+        bound_logger = logger.bind(session_id=session_id, node="eval")
+        bound_logger.info("eval_execute_receive", experience_preview=(str(experience)[:200] if experience else None))
         raw_input: Optional[str] = state.get("raw_input")
         file_path: Optional[str] = state.get("input_file_path")
 
@@ -146,9 +155,9 @@ class EvalAgent:
             else:
                 evaluation = {"error": "No input provided for evaluation"}
         except Exception as e:
-            logger.error("eval_execute_error", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            bound_logger.error("eval_execute_error", error=str(e), exc_info=True)
             evaluation = self._error_fallback(str(e))
-        logger.info("evaluation_result", session_id=state.get("session_id"), evaluation=evaluation)
+        bound_logger.info("evaluation_result", evaluation=evaluation)
         return {"evaluation": evaluation}
 
     def _error_fallback(self, message: str) -> Dict[str, Any]:

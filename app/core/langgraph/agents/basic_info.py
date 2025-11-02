@@ -46,6 +46,7 @@ class BasicInfoAgent:
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
+        bound_logger = logger.bind(session_id=session_id, node="basic_info")
         llm_structured = self.llm.with_structured_output(BasicInfo)
         start = time.time()
         response = llm_structured.invoke(
@@ -56,14 +57,15 @@ class BasicInfoAgent:
             },
         )
         duration = time.time() - start
-        logger.info("basic_info_llm_call_finished", session_id=session_id, duration_s=duration)
+        bound_logger.info("basic_info_llm_call_finished", duration_s=duration)
         tags_info = self.extract_tags(state)
-        logger.info("basic_info_execute_complete", session_id=session_id)
+        bound_logger.info("basic_info_execute_complete")
         return {"basic_info": response, "tags_info": tags_info}
 
     def extract_tags(self, state: TravelAgentState) -> Dict[str, Any]:
         extracted_text = state.get("extracted_text")
         session_id = state.get("session_id", "")
+        bound_logger = logger.bind(session_id=session_id, node="basic_info_tags")
         start = time.time()
         # First invocation - let agent use tools
         result = self.agent_executor.invoke(
@@ -76,11 +78,10 @@ class BasicInfoAgent:
                 "langfuse_session_id": session_id,
             },
         )
-        logger.debug("basic_info_agent_messages", session_id=session_id, message_count=len(result.get("messages", [])))
+        bound_logger.debug("basic_info_agent_messages", message_count=len(result.get("messages", [])))
         for msg in result["messages"]:
-            logger.debug(
+            bound_logger.debug(
                 "basic_info_agent_message_item",
-                session_id=session_id,
                 type=type(msg).__name__,
                 content_preview=(msg.content[:200] if msg.content else "EMPTY"),
             )
@@ -93,7 +94,7 @@ class BasicInfoAgent:
         if not final_message.content or (
             isinstance(final_message.content, str) and final_message.content.strip() == ""
         ):
-            logger.debug("basic_info_final_message_empty", session_id=session_id)
+            bound_logger.debug("basic_info_final_message_empty")
             result = self.agent_executor.invoke(
                 {"messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]},
                 config={
@@ -107,9 +108,8 @@ class BasicInfoAgent:
 
         final_message = result["messages"][-1]
 
-        logger.debug(
+        bound_logger.debug(
             "basic_info_final_message_content",
-            session_id=session_id,
             content_preview=(final_message.content[:400] if final_message.content else None),
         )
 
@@ -123,8 +123,8 @@ class BasicInfoAgent:
             },
         )
         tag_duration = time.time() - tag_start
-        logger.info("basic_info_tags_llm_finished", session_id=session_id, duration_s=tag_duration)
-        logger.debug("basic_info_tags_info", session_id=session_id, tags_info=tags_info)
+        bound_logger.info("basic_info_tags_llm_finished", duration_s=tag_duration)
+        bound_logger.debug("basic_info_tags_info", tags_info=tags_info)
         total_duration = time.time() - start
-        logger.info("basic_info_extract_tags_complete", session_id=session_id, total_duration_s=total_duration)
+        bound_logger.info("basic_info_extract_tags_complete", total_duration_s=total_duration)
         return tags_info

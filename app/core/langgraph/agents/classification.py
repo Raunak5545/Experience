@@ -13,6 +13,9 @@ from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.langgraph.llm_client import LLMClient
+from app.core.langgraph.output_validator import validate_json, repair_json_with_llm
+from app.core.logging import logger
 from app.core.logging import logger
 
 class ClassificationAgent:
@@ -37,22 +40,29 @@ class ClassificationAgent:
             google_api_key=settings.LLM_API_KEY,
             **model_config.to_dict()
         )
+        # Wrap with LLM client
+        self.llm_client = LLMClient(llm=self.llm, name=model_config.model_name)
     
     def classify(self, extracted_text: str,session_id :str) -> Dict[str, Any]:
         """Classify itinerary based on completeness"""
         prompt = load_prompt("classification.md", {"extracted_text": extracted_text})
         start = time.time()
-        response = self.llm.invoke(
-            [HumanMessage(content=prompt)],
-            config={
-                "callbacks":[langfuse_handler],
-                "langfuse_session_id" : session_id,
-            }
-        )
+        bound_logger = logger.bind(session_id=session_id, node="classification")
+        resp = self.llm_client.invoke([HumanMessage(content=prompt)], session_id=session_id, callbacks=[langfuse_handler])
         duration = time.time() - start
-        logger.info("classification_llm_call_finished", session_id=session_id, duration_s=duration)
+        bound_logger.info("classification_llm_call_finished", duration_s=duration)
         try:
-            result = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
+            content = (resp.get("content") or "").strip()
+            parsed = validate_json(content, session_id=session_id)
+            if parsed.get("ok"):
+                result = parsed.get("obj")
+            else:
+                repair = repair_json_with_llm(self.llm_client, content, session_id=session_id, max_attempts=1)
+                if repair.get("ok"):
+                    result = repair.get("obj")
+                else:
+                    # fallback to best-effort
+                    result = json.loads(content.replace("```json", "").replace("```", ""))
             return result
         except:
             return {
@@ -69,14 +79,15 @@ class ClassificationAgent:
         
         extracted_text = state.get("extracted_text", "")
         session_id = state.get("session_id","") 
-        logger.info("classification_execute_start", session_id=session_id)
+        bound_logger = logger.bind(session_id=session_id, node="classification")
+        bound_logger.info("classification_execute_start")
         # Classify the itinerary
         classification_result = self.classify(extracted_text, session_id)
 
         classification_type = classification_result.get("type", "unmanaged")
         reason = classification_result.get("Explanation", "")
-        logger.debug("classification_result", session_id=session_id, result=classification_result)
-        logger.info("classification_execute_complete", session_id=session_id, classification_type=classification_type)
+        bound_logger.debug("classification_result", result=classification_result)
+        bound_logger.info("classification_execute_complete", classification_type=classification_type)
         return {
             "classification_type": classification_type,
             "classification_reason": reason,

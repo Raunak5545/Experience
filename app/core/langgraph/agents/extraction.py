@@ -67,6 +67,7 @@ class ExtractionAgent:
         full_prompt = load_prompt("extraction.md", {"extra_instructions": task_prompt})
         is_url = state.get("is_url")
         session_id = state.get("session_id", "")
+        bound_logger = logger.bind(session_id=session_id, node="extraction")
         if is_url:
             content = prepare_content_message(
                 full_prompt,
@@ -79,7 +80,7 @@ class ExtractionAgent:
                     "langfuse_session_id": state.get("session_id"),
                 },
             )
-            logger.info("extraction_url_invoked", session_id=session_id, url=file_input)
+            bound_logger.info("extraction_url_invoked", url=file_input)
             response.response_metadata
             return response.content, None
 
@@ -91,16 +92,16 @@ class ExtractionAgent:
         uploaded_file = self.multimodal_client.files.upload(file=file_input)
         while True:
             current_file = self.multimodal_client.files.get(name=uploaded_file.name)
-            logger.debug("file_upload_state", session_id=state.get("session_id"), file_name=uploaded_file.name, state=current_file.state)
+            bound_logger.debug("file_upload_state", file_name=uploaded_file.name, state=current_file.state)
             if current_file.state == "ACTIVE":
                 break
             elif current_file.state == "FAILED":
-                logger.error("file_processing_failed", session_id=session_id, file_name=uploaded_file.name)
+                bound_logger.error("file_processing_failed", file_name=uploaded_file.name)
                 raise RuntimeError("File processing failed.")
             curr_time = time.time()
             diff_time = curr_time - start_time
             if diff_time > 180:
-                logger.error("file_upload_timeout", session_id=session_id, elapsed=diff_time)
+                bound_logger.error("file_upload_timeout", elapsed=diff_time)
                 raise HTTPException(status_code=502, detail="Timed out while trying to upload the file.")
             time.sleep(2)
         response = self.multimodal_client.models.generate_content(
@@ -113,7 +114,8 @@ class ExtractionAgent:
         raw_input: Optional[str] = state.get("raw_input")
         file_path: Optional[str] = state.get("input_file_path")
         session_id = state.get("session_id", "")
-        logger.info("extraction_execute_start", session_id=session_id, has_file=bool(file_path), has_raw_input=bool(raw_input))
+        bound_logger = logger.bind(session_id=session_id, node="extraction")
+        bound_logger.info("extraction_execute_start", has_file=bool(file_path), has_raw_input=bool(raw_input))
 
         if file_path:
             extracted_text, uploaded_file = self.extract_from_input(
@@ -126,7 +128,7 @@ class ExtractionAgent:
             extracted_text = self.extract_from_text(raw_input)
         else:
             extracted_text = "No input provided."
-        logger.info("extraction_execute_complete", session_id=session_id, extracted_text_length=len(extracted_text) if isinstance(extracted_text, str) else None)
+        bound_logger.info("extraction_execute_complete", extracted_text_length=len(extracted_text) if isinstance(extracted_text, str) else None)
         return {
             "extracted_text": extracted_text,
             "input_file": uploaded_file,

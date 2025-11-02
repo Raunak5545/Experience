@@ -13,6 +13,7 @@ from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.langgraph.schema.experience import TravelPlan
 from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
+from app.core.logging import logger
 
 
 class PlanAgent:
@@ -51,6 +52,6 @@ class PlanAgent:
             },
         )
         duration = time.time() - start
-        print(f"[Timing] PlanAgent LLM call finished in {duration:.2f} seconds.")
-        print("Returning from plan_agent")
+        logger.info("plan_agent_llm_finished", session_id=session_id, duration_s=duration)
+        logger.info("plan_agent_execute_complete", session_id=session_id)
         return {"travel_plan": response}

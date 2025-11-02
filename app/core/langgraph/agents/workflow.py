@@ -51,7 +51,14 @@ def create_travel_workflow():
     # Create node functions
     def extraction_node(state: TravelAgentState) -> Dict[str, Any]:
         """Extract travel information from multimodal input"""
-        return extraction_agent.execute(state)
+        logger.info("node_start", node="extraction", session_id=state.get("session_id"))
+        try:
+            result = extraction_agent.execute(state)
+            logger.info("node_complete", node="extraction", session_id=state.get("session_id"))
+            return result
+        except Exception as e:
+            logger.error("node_error", node="extraction", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            raise
 
     def validation_node(state: TravelAgentState) -> Dict[str, Any]:
         """Validate extracted information (not connected in current workflow)"""
@@ -59,15 +66,36 @@ def create_travel_workflow():
 
     def classification_node(state: TravelAgentState) -> Dict[str, Any]:
         """Classify extracted content as Managed/Unmanaged"""
-        return classification_agent.execute(state)
+        logger.info("node_start", node="classification", session_id=state.get("session_id"))
+        try:
+            result = classification_agent.execute(state)
+            logger.info("node_complete", node="classification", session_id=state.get("session_id"))
+            return result
+        except Exception as e:
+            logger.error("node_error", node="classification", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            raise
 
     def basic_info_node(state: TravelAgentState) -> Dict[str, Any]:
         """Extract basic information and metadata"""
-        return basic_info_agent.execute(state)
+        logger.info("node_start", node="basic_info", session_id=state.get("session_id"))
+        try:
+            result = basic_info_agent.execute(state)
+            logger.info("node_complete", node="basic_info", session_id=state.get("session_id"))
+            return result
+        except Exception as e:
+            logger.error("node_error", node="basic_info", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            raise
 
     def plan_agent_node(state: TravelAgentState) -> Dict[str, Any]:
         """Generate day-wise travel itinerary"""
-        return plan_agent.execute(state)
+        logger.info("node_start", node="plan", session_id=state.get("session_id"))
+        try:
+            result = plan_agent.execute(state)
+            logger.info("node_complete", node="plan", session_id=state.get("session_id"))
+            return result
+        except Exception as e:
+            logger.error("node_error", node="plan", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            raise
 
     def combine_node(state: "TravelAgentState") -> Dict[str, Any]:
         # Safely extract Pydantic models or default to None
@@ -82,11 +110,19 @@ def create_travel_workflow():
             **(tags_info.model_dump() if tags_info else {}),
             "plan_type": classification_type,
         }
+        logger.info("node_complete", node="combine", session_id=state.get("session_id"))
         return {"experience": experience}
 
     def eval_node(state: TravelAgentState) -> Dict[str, Any]:
         """Evaluate the final structured"""
-        return eval_agent.execute(state)
+        logger.info("node_start", node="eval", session_id=state.get("session_id"))
+        try:
+            result = eval_agent.execute(state)
+            logger.info("node_complete", node="eval", session_id=state.get("session_id"))
+            return result
+        except Exception as e:
+            logger.error("node_error", node="eval", session_id=state.get("session_id"), error=str(e), exc_info=True)
+            raise
 
     # Build workflow graph
     workflow = StateGraph(TravelAgentState)
@@ -136,6 +172,11 @@ def start_agentic_process(file_input: str, is_url: bool = False) -> Dict[str, An
     workflow = create_travel_workflow()
 
     state = {"input_file_path": file_input, "is_url": is_url, "session_id": str(uuid.uuid4())}
-    result = workflow.invoke(state)
-
-    return result
+    logger.info("agentic_process_started", session_id=state.get("session_id"), input=file_input, is_url=is_url)
+    try:
+        result = workflow.invoke(state)
+        logger.info("agentic_process_completed", session_id=state.get("session_id"))
+        return result
+    except Exception as e:
+        logger.error("agentic_process_failed", session_id=state.get("session_id"), error=str(e), exc_info=True)
+        raise

@@ -13,6 +13,7 @@ from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
+from app.core.logging import logger
 
 class ClassificationAgent:
     """Classifies itinerary as Managed or Unmanaged"""
@@ -49,7 +50,7 @@ class ClassificationAgent:
             }
         )
         duration = time.time() - start
-        print(f"[Timing] ClassificationAgent LLM call finished in {duration:.2f} seconds.")
+        logger.info("classification_llm_call_finished", session_id=session_id, duration_s=duration)
         try:
             result = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
             return result
@@ -68,12 +69,14 @@ class ClassificationAgent:
         
         extracted_text = state.get("extracted_text", "")
         session_id = state.get("session_id","") 
+        logger.info("classification_execute_start", session_id=session_id)
         # Classify the itinerary
-        classification_result = self.classify(extracted_text,session_id)
-        
+        classification_result = self.classify(extracted_text, session_id)
+
         classification_type = classification_result.get("type", "unmanaged")
         reason = classification_result.get("Explanation", "")
-        print(classification_result) 
+        logger.debug("classification_result", session_id=session_id, result=classification_result)
+        logger.info("classification_execute_complete", session_id=session_id, classification_type=classification_type)
         return {
             "classification_type": classification_type,
             "classification_reason": reason,

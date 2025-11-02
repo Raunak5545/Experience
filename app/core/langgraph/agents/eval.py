@@ -58,6 +58,7 @@ class EvalAgent:
                 content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception as e:
+            logger.error("eval_from_text_error", session_id=session_id, error=str(e), exc_info=True)
             return self._error_fallback(str(e))
 
     def evaluate_input(self, state) -> Dict[str, Any]:
@@ -80,14 +81,12 @@ class EvalAgent:
                         "langfuse_session_id": session_id,
                     },
                 )
-                print(response)
                 content = response.content.strip()
                 if content.startswith("```json"):
                     content = content.replace("```json", "").replace("```", "").strip()
                 return json.loads(content)
             except Exception as e:
-                print(e)
-                traceback.print_exc()
+                logger.error("eval_evaluate_input_url_error", session_id=session_id, error=str(e), exc_info=True)
                 return self._error_fallback(str(e))
 
         # For file uploads
@@ -97,8 +96,7 @@ class EvalAgent:
         # Upload file to Google GenAI
         uploaded_file = state.get("input_file")
         if not uploaded_file:
-            logger.info("Could not find uploaded_file uploading a new file")
-            print("Could not find uploaded_file uploading a new file")
+            logger.info("eval_missing_uploaded_file_uploading", session_id=session_id, file_input=file_input)
             uploaded_file = self.multimodal_client.files.upload(file=file_input)
 
         # Wait until ACTIVE or timeout
@@ -127,8 +125,7 @@ class EvalAgent:
                 content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(content)
         except Exception as e:
-            print(e)
-            traceback.print_exc()
+            logger.error("eval_evaluate_input_file_error", session_id=session_id, error=str(e), exc_info=True)
             return self._error_fallback(str(e))
 
     def execute(self, state: TravelAgentState) -> Dict[str, Any]:
@@ -149,8 +146,9 @@ class EvalAgent:
             else:
                 evaluation = {"error": "No input provided for evaluation"}
         except Exception as e:
+            logger.error("eval_execute_error", session_id=state.get("session_id"), error=str(e), exc_info=True)
             evaluation = self._error_fallback(str(e))
-        print("Evaluation Result:", evaluation)
+        logger.info("evaluation_result", session_id=state.get("session_id"), evaluation=evaluation)
         return {"evaluation": evaluation}
 
     def _error_fallback(self, message: str) -> Dict[str, Any]:

@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings
+from app.core.logging import logger
 from app.core.langgraph.agents.globalstate import TravelAgentState
 from app.core.langgraph.agents.langfuse_callback import langfuse_handler
 from app.core.langgraph.config.model_config import workflow_config
@@ -65,6 +66,7 @@ class ExtractionAgent:
         )
         full_prompt = load_prompt("extraction.md", {"extra_instructions": task_prompt})
         is_url = state.get("is_url")
+        session_id = state.get("session_id", "")
         if is_url:
             content = prepare_content_message(
                 full_prompt,
@@ -77,6 +79,7 @@ class ExtractionAgent:
                     "langfuse_session_id": state.get("session_id"),
                 },
             )
+            logger.info("extraction_url_invoked", session_id=session_id, url=file_input)
             response.response_metadata
             return response.content, None
 
@@ -88,14 +91,16 @@ class ExtractionAgent:
         uploaded_file = self.multimodal_client.files.upload(file=file_input)
         while True:
             current_file = self.multimodal_client.files.get(name=uploaded_file.name)
-            print("Current state:", current_file.state)
+            logger.debug("file_upload_state", session_id=state.get("session_id"), file_name=uploaded_file.name, state=current_file.state)
             if current_file.state == "ACTIVE":
                 break
             elif current_file.state == "FAILED":
+                logger.error("file_processing_failed", session_id=session_id, file_name=uploaded_file.name)
                 raise RuntimeError("File processing failed.")
             curr_time = time.time()
             diff_time = curr_time - start_time
             if diff_time > 180:
+                logger.error("file_upload_timeout", session_id=session_id, elapsed=diff_time)
                 raise HTTPException(status_code=502, detail="Timed out while trying to upload the file.")
             time.sleep(2)
         response = self.multimodal_client.models.generate_content(
@@ -107,6 +112,8 @@ class ExtractionAgent:
 
         raw_input: Optional[str] = state.get("raw_input")
         file_path: Optional[str] = state.get("input_file_path")
+        session_id = state.get("session_id", "")
+        logger.info("extraction_execute_start", session_id=session_id, has_file=bool(file_path), has_raw_input=bool(raw_input))
 
         if file_path:
             extracted_text, uploaded_file = self.extract_from_input(
@@ -119,6 +126,7 @@ class ExtractionAgent:
             extracted_text = self.extract_from_text(raw_input)
         else:
             extracted_text = "No input provided."
+        logger.info("extraction_execute_complete", session_id=session_id, extracted_text_length=len(extracted_text) if isinstance(extracted_text, str) else None)
         return {
             "extracted_text": extracted_text,
             "input_file": uploaded_file,

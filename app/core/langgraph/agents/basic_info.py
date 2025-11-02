@@ -21,6 +21,7 @@ from app.core.langgraph.schema.experience import (
 from app.core.langgraph.tools.experience_types_tags import get_full_experience_taxonomy
 from app.core.langgraph.config.model_config import workflow_config
 from app.core.prompts import load_prompt
+from app.core.logging import logger
 
 
 class BasicInfoAgent:
@@ -55,9 +56,9 @@ class BasicInfoAgent:
             },
         )
         duration = time.time() - start
-        print(f"[Timing] BasicInfoAgent LLM call finished in {duration:.2f} seconds.")
+        logger.info("basic_info_llm_call_finished", session_id=session_id, duration_s=duration)
         tags_info = self.extract_tags(state)
-        print("Returning from basic-info")
+        logger.info("basic_info_execute_complete", session_id=session_id)
         return {"basic_info": response, "tags_info": tags_info}
 
     def extract_tags(self, state: TravelAgentState) -> Dict[str, Any]:
@@ -75,9 +76,14 @@ class BasicInfoAgent:
                 "langfuse_session_id": session_id,
             },
         )
-        print("Agent result messages:")
+        logger.debug("basic_info_agent_messages", session_id=session_id, message_count=len(result.get("messages", [])))
         for msg in result["messages"]:
-            print(f"Type: {type(msg).__name__}, Content: {msg.content[:200] if msg.content else 'EMPTY'}")
+            logger.debug(
+                "basic_info_agent_message_item",
+                session_id=session_id,
+                type=type(msg).__name__,
+                content_preview=(msg.content[:200] if msg.content else "EMPTY"),
+            )
 
         final_message = result["messages"][-1]
 
@@ -87,7 +93,7 @@ class BasicInfoAgent:
         if not final_message.content or (
             isinstance(final_message.content, str) and final_message.content.strip() == ""
         ):
-            print("Final message empty, requesting JSON output...")
+            logger.debug("basic_info_final_message_empty", session_id=session_id)
             result = self.agent_executor.invoke(
                 {"messages": [HumanMessage(content=load_prompt("tag.md", {"extracted_text": extracted_text}))]},
                 config={
@@ -101,7 +107,11 @@ class BasicInfoAgent:
 
         final_message = result["messages"][-1]
 
-        print(f"Final message content: {final_message.content}")
+        logger.debug(
+            "basic_info_final_message_content",
+            session_id=session_id,
+            content_preview=(final_message.content[:400] if final_message.content else None),
+        )
 
         llm_structured = self.llm.with_structured_output(ExperienceTagsOutputScehma)
         tag_start = time.time()
@@ -113,8 +123,8 @@ class BasicInfoAgent:
             },
         )
         tag_duration = time.time() - tag_start
-        print(f"[Timing] BasicInfoAgent tags LLM call finished in {tag_duration:.2f} seconds.")
-        print(tags_info)
+        logger.info("basic_info_tags_llm_finished", session_id=session_id, duration_s=tag_duration)
+        logger.debug("basic_info_tags_info", session_id=session_id, tags_info=tags_info)
         total_duration = time.time() - start
-        print(f"[Timing] BasicInfoAgent extract_tags total finished in {total_duration:.2f} seconds.")
+        logger.info("basic_info_extract_tags_complete", session_id=session_id, total_duration_s=total_duration)
         return tags_info

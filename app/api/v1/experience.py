@@ -7,6 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File
 from pydantic import BaseModel, HttpUrl
 from app.core.langgraph.agents.workflow import start_agentic_process
+from app.core.logging import logger
 
 
 router = APIRouter()
@@ -21,6 +22,7 @@ class ExperienceInput(BaseModel):
 async def create_experience_from_url(input_data: ExperienceInput):
     """Create experience from a URL input"""
     try:
+        logger.info("create_experience_from_url_called", url=str(input_data.file_url))
         res = start_agentic_process(str(input_data.file_url), is_url=True)
         return {
             "url": str(input_data.file_url),
@@ -28,7 +30,7 @@ async def create_experience_from_url(input_data: ExperienceInput):
             "evaluation": res.get("evaluation"),
         }
     except Exception as e:
-        traceback.print_exc()
+        logger.error("create_experience_from_url_failed", url=str(input_data.file_url), error=str(e), exc_info=True)
         return {"error": str(e)}
 
 
@@ -41,15 +43,16 @@ async def create_experience(file: UploadFile = File(...)):
     try:
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-
+        logger.info("create_experience_file_received", filename=file.filename, temp_path=temp_file_path)
         res = start_agentic_process(temp_file_path, is_url=False)
+        logger.info("create_experience_file_processed", filename=file.filename)
         return {
             "filename": file.filename,
             "experience": res.get("experience"),
             "evaluation": res.get("evaluation"),
         }
     except Exception as e:
-        traceback.print_exc()
+        logger.error("create_experience_file_failed", filename=file.filename, error=str(e), exc_info=True)
         return {"error": str(e)}
     finally:
         if os.path.exists(temp_file_path):
@@ -69,6 +72,7 @@ async def create_experience(files: list[UploadFile] = File(...)):
                 shutil.copyfileobj(file.file, buffer)
 
             # Run your processing (can also be made async if start_agentic_process supports it)
+            logger.info("create_experience_multiple_file_saved", filename=file.filename)
             res = await asyncio.to_thread(start_agentic_process, temp_file_path)
 
             return {
@@ -78,7 +82,7 @@ async def create_experience(files: list[UploadFile] = File(...)):
             }
 
         except Exception as e:
-            traceback.print_exc()
+            logger.error("create_experience_multiple_file_failed", filename=file.filename, error=str(e), exc_info=True)
             return {"filename": file.filename, "error": str(e)}
 
         finally:

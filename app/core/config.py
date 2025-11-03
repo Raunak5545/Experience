@@ -254,3 +254,4 @@ class Settings:
 
 # Create settings instance
 settings = Settings()
+print(settings.CLASSIFICATION_MODEL, settings.EVALUATION_MODEL, settings.BASIC_INFO_MODEL)
